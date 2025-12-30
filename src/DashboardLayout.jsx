@@ -1,0 +1,23 @@
+import Sidebar from "./Sidebar";
+import { Outlet } from "react-router-dom";
+import "./Dashboard.css";
+
+function DashboardLayout() {
+  return (
+    <div className="dashboard-container">
+      <div className="top-nav">
+        <h2>Lawyer Management System</h2>
+      </div>
+
+      <div className="body-wrapper">
+        <Sidebar />
+
+        <div className="main-body">
+          <Outlet />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default DashboardLayout;

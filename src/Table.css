@@ -1,0 +1,85 @@
+.styled-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 25px 0;
+  font-size: 16px;
+  font-family: "Poppins", sans-serif;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.styled-table th {
+  background: rgb(81, 81, 224);
+  color: #fff;
+  text-align: center;
+  font-weight: 600;
+  padding: 12px 15px;
+}
+
+.styled-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+}
+
+.styled-table tr:nth-child(even) {
+  background: #f8f8f8;
+}
+
+.styled-table tr:hover {
+  background: #eef2ff;
+  transition: 0.3s;
+}
+.delete-btn {
+  color: white;
+  background: #e63946;
+  padding: 6px 12px;
+  text-decoration: none;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.delete-btn:hover {
+  background: #b92b39;
+  border: none;
+}
+
+.success-msg {
+  color: #2e7d32;
+  background: #d0f0d0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  width: fit-content;
+  margin: 20px auto;
+  text-align: center;
+}
+
+.error-msg {
+  color: #b71c1c;
+  background: #f8d7da;
+  padding: 10px 15px;
+  border-radius: 8px;
+  width: fit-content;
+  margin: 20px auto;
+  text-align: center;
+}
+
+.no-data {
+  color: #444;
+  text-align: center;
+  margin-top: 40px;
+}
+.btn1 {
+  margin-left: 1%;
+  padding: 8px 30px;
+  background: rgb(0, 0, 0);
+  color: white;
+  border: none;
+}
+.searchbar {
+  padding: 5px;
+  outline: none;
+}

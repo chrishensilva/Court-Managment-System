@@ -1,0 +1,40 @@
+.sidebar-body {
+  width: 10%;
+  padding: 30px;
+  background-color: #263238;
+}
+.sidebar-body h3 {
+  margin-left: 1%;
+  margin-bottom: 20%;
+  padding-bottom: 50px;
+  color: white;
+  justify-content: center;
+  align-items: center;
+  padding: 5px;
+  transition: background-color 0.1s ease-in-out;
+  border-radius: 8px;
+}
+.sidebar-body h3:hover {
+  cursor: pointer;
+  background-color: #acb6b665;
+}
+.sidebar-logout {
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 10px;
+  background-color: #e63946;
+  color: #fff;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #c62828;
+}

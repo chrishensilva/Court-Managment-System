@@ -1,0 +1,41 @@
+import './Form.css';
+
+function AddUser() {
+    return (
+        <>
+            <div class="container">
+        
+                <form method="POST" action="http://localhost/api/addUser.php">
+                    <h2>Insert New User Record</h2>
+
+                    <label for="name">Name</label>
+                    <input type="text" class="field" name="name"></input>
+
+                    <label for="nic">NIC Number</label>
+                    <input type="text" class="field" name="nic" required></input>
+
+                    <label for="email">Email</label>
+                    <input type="email" class="field" name="email" required></input>
+
+                    <label for="number">Contact Number</label>
+                    <input type="text" class="field" name="number"></input>
+
+                    <label for="ldate">Last Court Date</label>
+                    <input type="date" class="field" name="ldate" required></input>
+
+                    <label for="ndate">Next Court Date</label>
+                    <input type="date" class="field" name="ndate" required></input>
+
+                    <label for="Note">Notes</label>
+                    <textarea class="field" name="note"></textarea>
+
+                    <div class="btnset">
+                        <input type="submit" class="submit"></input>
+                    </div>
+                </form>
+            </div>
+        </>
+    );
+}
+
+export default AddUser;

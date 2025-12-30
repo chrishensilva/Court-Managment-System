@@ -1,0 +1,62 @@
+.todo-box {
+  width: 400px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-list {
+  flex: 1;
+  overflow-y: auto;     /* Scrollbar */
+  margin-top: 15px;
+  max-height: 100%;
+  padding-right: 5px;   /* Fix scrollbar overlap */
+}
+
+.task-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.task-list::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 10px;
+}
+
+.input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input, button {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+}
+
+li {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #f7f7f7;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.delete-btn {
+  background: red;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
