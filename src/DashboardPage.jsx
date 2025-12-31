@@ -1,4 +1,5 @@
 import TodoApp from "./TodoApp.jsx";
+import CaseTypeChart from "./CaseTypeChart";
 
 function DashboardPage() {
   return (
@@ -31,15 +32,7 @@ function DashboardPage() {
           <div className="graph-placeholder">GRAPH HERE</div>
         </div>*/}
 
-        {/*<div className="todo-box">
-          <h3>To Do List</h3>
-          <ul>
-            <li>Design a nice theme</li>
-            <li>Make the theme responsive</li>
-            <li>Let theme shine like a star</li>
-            <li>Check your messages</li>
-          </ul>
-        </div>*/}
+        <CaseTypeChart />
         <TodoApp />
       </div>
     </>
