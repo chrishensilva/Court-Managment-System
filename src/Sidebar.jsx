@@ -29,6 +29,9 @@ function Sidebar() {
           Logout
         </button>
       </div>
+      <footer>
+        <p>All rights reserved©2025 ChrishenSilva</p>
+      </footer>
     </div>
   );
 }
