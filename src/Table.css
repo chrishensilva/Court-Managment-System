@@ -79,6 +79,10 @@
   color: white;
   border: none;
 }
+.btn1:hover {
+  background: rgb(81, 81, 224);
+  cursor: pointer;
+}
 .searchbar {
   padding: 5px;
   outline: none;

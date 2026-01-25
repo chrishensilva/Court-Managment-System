@@ -69,23 +69,35 @@ function UserPage() {
               <th>NIC</th>
               <th>Email</th>
               <th>Contact</th>
+              <th>Address</th>
+              <th>Lawyers</th>
+              <th>Notes</th>
+              <th>Crime Type</th>
               <th>Last Court Date</th>
               <th>Next Court Date</th>
-              <th>Crime Type</th>
               <th>Action</th>
             </tr>
           </thead>
 
           <tbody>
             {users.map((u, index) => (
-              <tr data-aos="fade-up" data-aos-delay={index * 80} key={u.nic}>
+              <tr key={u.nic} data-aos="fade-up" data-aos-delay={index * 80}>
                 <td>{u.name}</td>
                 <td>{u.nic}</td>
                 <td>{u.email}</td>
                 <td>{u.number}</td>
+                <td>{u.address || "-"}</td>
+
+                <td>
+                  {[u.lawyer1, u.lawyer2, u.lawyer3]
+                    .filter(Boolean)
+                    .join(", ") || "-"}
+                </td>
+
+                <td>{u.note || "-"}</td>
+                <td>{u.casetype}</td>
                 <td>{u.last_date}</td>
                 <td>{u.next_date}</td>
-                <td>{u.note}</td>
 
                 <td>
                   <button

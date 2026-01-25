@@ -8,15 +8,18 @@
   margin-bottom: 20%;
   padding-bottom: 50px;
   color: white;
-  justify-content: center;
-  align-items: center;
   padding: 5px;
   transition: background-color 0.1s ease-in-out;
   border-radius: 8px;
 }
 .sidebar-body h3:hover {
   cursor: pointer;
-  background-color: #acb6b665;
+  background-color: #ffffff9c;
+  color: #263238;
+}
+.sidebar-body h3.active {
+  background-color: #ffffff;
+  color: #263238;
 }
 .sidebar-logout {
   padding-top: 20px;

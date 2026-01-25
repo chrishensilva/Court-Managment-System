@@ -61,8 +61,11 @@ function Cases() {
             <th>NIC</th>
             <th>Email</th>
             <th>Contact</th>
+            <th>Address</th>
             <th>Last Court Date</th>
             <th>Next Court Date</th>
+            <th>Case</th>
+            <th>Lawyers</th>
             <th>Note</th>
             <th>Assign Lawyer</th>
           </tr>
@@ -74,8 +77,11 @@ function Cases() {
               <td>{u.nic}</td>
               <td>{u.email}</td>
               <td>{u.number}</td>
+              <td>{u.address}</td>
               <td>{u.last_date}</td>
               <td>{u.next_date}</td>
+              <td>{u.casetype}</td>
+              <td>{u.lawyer1}</td>
               <td>{u.note}</td>
               <td>
                 <select

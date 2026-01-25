@@ -6,7 +6,7 @@ function DashboardLayout() {
   return (
     <div className="dashboard-container">
       <div className="top-nav">
-        <h2>Lawyer Management System</h2>
+        <h2>Case Management System</h2>
       </div>
 
       <div className="body-wrapper">

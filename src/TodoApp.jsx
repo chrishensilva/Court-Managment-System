@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./Todo.css";
 
 export default function TodoApp() {
@@ -7,31 +7,47 @@ export default function TodoApp() {
   const [time, setTime] = useState("");
   const [todos, setTodos] = useState([]);
 
-  const addTodo = () => {
+  const addTodo = async () => {
     if (!task || !date || !time) return;
 
-    const newTodo = {
-      id: Date.now(),
-      task,
-      date,
-      time,
-    };
+    const res = await fetch("http://localhost:5000/todos", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ task, date, time }),
+    });
 
-    setTodos([...todos, newTodo]);
+    const newTodo = await res.json();
+    setTodos([newTodo, ...todos]);
 
-    // Clear inputs
     setTask("");
     setDate("");
     setTime("");
   };
 
-  const deleteTodo = (id) => {
+  const deleteTodo = async (id) => {
+    await fetch(`http://localhost:5000/todos/${id}`, {
+      method: "DELETE",
+    });
+
     setTodos(todos.filter((item) => item.id !== id));
   };
 
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toISOString().split("T")[0];
+  };
+
+  useEffect(() => {
+    fetch("http://localhost:5000/todos")
+      .then((res) => res.json())
+      .then((data) => setTodos(data));
+  }, []);
+
   return (
     <div className="todo-box">
-      <h3>To Do List</h3>
+      <h3>Notes</h3>
 
       <div className="input-area">
         <input
@@ -60,7 +76,8 @@ export default function TodoApp() {
           {todos.map((item) => (
             <li key={item.id}>
               <span>
-                <strong>{item.task}</strong> – {item.date} at {item.time}
+                <strong>{item.task}</strong> – {formatDate(item.date)} at{" "}
+                {item.time.slice(0, 5)}
               </span>
 
               <button

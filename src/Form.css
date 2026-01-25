@@ -109,7 +109,12 @@ textarea.field {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(74, 116, 245, 0.4);
 }
-
+#addlawyer {
+  background-color: #01881e;
+}
+#adduser {
+  background-color: blue;
+}
 /* --- Animation --- */
 @keyframes fadeIn {
   from {
