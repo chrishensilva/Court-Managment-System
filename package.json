@@ -12,6 +12,7 @@
   "dependencies": {
     "@honeybadger-io/js": "^6.12.3",
     "@honeybadger-io/react": "^6.1.27",
+    "axios": "^1.13.5",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "mysql2": "^3.16.1",

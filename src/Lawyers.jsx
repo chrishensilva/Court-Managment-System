@@ -30,7 +30,7 @@ function Lawyers() {
 
   return (
     <div className="lawyers-page">
-      <h2>Lawyer Records</h2>
+      <h2>Lawyers</h2>
 
       {/* Search */}
       <input

@@ -35,7 +35,7 @@ function UserPage() {
       <div className="showdata">
         {/* Header */}
         <div className="btnset1" data-aos="fade-down">
-          <h2>User Data</h2>
+          <h2>Cases</h2>
 
           <div className="search-form">
             <input

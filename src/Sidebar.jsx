@@ -2,6 +2,12 @@ import "./Sidebar.css";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { useState } from "react";
+import dash from "./assets/Dash/dashboard.png";
+import lawyericon from "./assets/Dash/lawyer.png";
+import sidebarcase from "./assets/Dash/case.png";
+import assign from "./assets/Dash/assign.png";
+import newlawyer from "./assets/Dash/newlawyer.png";
+import newuser from "./assets/Dash/newclient.png";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -26,36 +32,42 @@ function Sidebar() {
           className={active === "/" ? "active" : ""}
           onClick={() => handleNavigate("/")}
         >
+          <img src={dash} alt="Dashboard Icon" className="sidebar-icon" />
           Dashboard
         </h3>
         <h3
           className={active === "/lawyers" ? "active" : ""}
           onClick={() => handleNavigate("/lawyers")}
         >
+          <img src={lawyericon} alt="Lawyers Icon" className="sidebar-icon" />
           Lawyers
         </h3>
         <h3
           className={active === "/clients" ? "active" : ""}
           onClick={() => handleNavigate("/clients")}
         >
-          Clients
+          <img src={sidebarcase} alt="Cases Icon" className="sidebar-icon" />
+          Cases
         </h3>
         <h3
           className={active === "/cases" ? "active" : ""}
           onClick={() => handleNavigate("/cases")}
         >
-          Cases
+          <img src={assign} alt="Assign Icon" className="sidebar-icon" />
+          Assign Cases
         </h3>
         <h3
           className={active === "/addlawyer" ? "active" : ""}
           onClick={() => handleNavigate("/addlawyer")}
         >
-          Add New Lawyer
+          <img src={newlawyer} alt="Add Lawyer Icon" className="sidebar-icon" />
+          Add Lawyer
         </h3>
         <h3
           className={active === "/adduser" ? "active" : ""}
           onClick={() => handleNavigate("/adduser")}
         >
+          <img src={newuser} alt="Add Client Icon" className="sidebar-icon" />
           Add New Case
         </h3>
       </div>
@@ -67,7 +79,7 @@ function Sidebar() {
       </div>
 
       <footer>
-        <p>All rights reserved ©2025 ChrishenSilva</p>
+        <p>All rights reserved ©2026 ChrishenSilva</p>
       </footer>
     </div>
   );

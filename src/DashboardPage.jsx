@@ -1,37 +1,54 @@
+import { useEffect, useState } from "react";
 import TodoApp from "./TodoApp.jsx";
 import CaseTypeChart from "./CaseTypeChart";
+import client from "./assets/client.png";
+import lawyer from "./assets/lawyer.png";
+import caseicon from "./assets/case.png";
 
 function DashboardPage() {
+  const [counts, setCounts] = useState({
+    totalClients: 0,
+    totalLawyers: 0,
+    totalCases: 0,
+  });
+
+  useEffect(() => {
+    fetch("http://localhost/api/dashboard_counts.php")
+      .then((res) => res.json())
+      .then((data) => {
+        setCounts(data);
+      })
+      .catch((err) => console.error("Error fetching dashboard counts:", err));
+  }, []);
+
   return (
     <>
       <div className="card-row">
         <div className="dash-card blue">
-          <h3>53</h3>
-          <p>Total Clients</p>
+          <h3>{counts.totalClients}</h3>
+          <p>Available Clients</p>
+          <img src={client} alt="Client Icon" className="card-icon" />
         </div>
 
         <div className="dash-card green">
-          <h3>18%</h3>
-          <p>Total Lawyers</p>
+          <h3>{counts.totalLawyers}</h3>
+          <p>Available Lawyers</p>
+          <img src={lawyer} alt="Lawyer Icon" className="card-icon" />
         </div>
 
         <div className="dash-card yellow">
-          <h3>44</h3>
-          <p>Total Cases</p>
+          <h3>{counts.totalCases}</h3>
+          <p>Available Cases</p>
+          <img src={caseicon} alt="Case Icon" className="card-icon" />
         </div>
 
         <div className="dash-card red">
-          <h3>65</h3>
+          <h3>--</h3>
           <p>Unpaid Invoices</p>
         </div>
       </div>
 
       <div className="bottom-section">
-        {/*<div className="graph-box">
-          <h3>Sales</h3>
-          <div className="graph-placeholder">GRAPH HERE</div>
-        </div>*/}
-
         <CaseTypeChart />
         <TodoApp />
       </div>
