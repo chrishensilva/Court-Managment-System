@@ -1,4 +1,5 @@
 import { createContext, useState, useContext } from "react";
+import API_BASE_URL from "./config";
 
 const AuthContext = createContext();
 
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
   const logAction = async (action, details = "") => {
     if (!user) return;
     try {
-      await fetch(`${localStorage.getItem("API_BASE_URL") || "http://127.0.0.1:5000/api"}/logAction`, {
+      await fetch(`${API_BASE_URL}/logAction`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: user.username, action, details }),
@@ -38,6 +39,7 @@ export function AuthProvider({ children }) {
       console.error("Failed to log action:", err);
     }
   };
+
 
   return (
     <AuthContext.Provider value={{ loggedIn, user, setAuth: updateAuth, hasPermission, logAction }}>

@@ -2,16 +2,27 @@ import express from "express";
 import cors from "cors";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { db } from "./db.js";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const port = process.env.PORT || 5000;
-
+const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors());
 app.use(express.json());
+
+// Serve React frontend in production
+if (isProduction) {
+  const distPath = path.join(__dirname, '../../dist');
+  app.use(express.static(distPath));
+}
 
 // --- DATABASE INITIALIZATION (MySQL) ---
 const initMySQL = () => {
@@ -345,8 +356,14 @@ app.post('/api/logAction', (req, res) => {
   res.json({ status: 'success' });
 });
 
+// Catch-all: serve React app for any non-API route (SPA support)
+if (isProduction) {
+  const distPath = path.join(__dirname, '../../dist');
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 app.listen(port, '0.0.0.0', () => {
   console.log(`MySQL API Server running at http://0.0.0.0:${port}`);
 });
-
-
