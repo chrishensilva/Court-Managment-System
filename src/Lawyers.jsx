@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import "./Table.css";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 
 function Lawyers() {
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
   const { user, logAction } = useAuth();
+  const { toast, confirm } = useToast();
 
   // Load data
   const loadData = () => {
@@ -30,12 +32,13 @@ function Lawyers() {
   }, []);
 
   // Delete lawyer
-  const deleteLawyer = (nic) => {
+  const deleteLawyer = async (nic) => {
     if (user?.role !== 'admin') {
-      alert("Only admins can delete lawyers.");
+      toast("Only admins can delete lawyers.", "warning");
       return;
     }
-    if (!window.confirm("Delete this lawyer?")) return;
+    const confirmed = await confirm("This will permanently delete this lawyer record.", "Delete Lawyer?", "danger");
+    if (!confirmed) return;
 
     fetch(`${API_BASE_URL}/deleteLawyer`, {
       method: "POST",
@@ -46,11 +49,13 @@ function Lawyers() {
       .then((data) => {
         if (data.status === "success") {
           logAction("Delete Lawyer", `Deleted lawyer with NIC: ${nic}`);
+          toast("Lawyer deleted successfully.", "success");
           loadData();
+        } else {
+          toast("Failed to delete lawyer.", "error");
         }
       });
   };
-
 
   return (
     <div className="lawyers-page fade-in">

@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 import "./Form.css";
+
 
 function AddEditor() {
     const { logAction } = useAuth();
+    const { toast, confirm } = useToast();
+
     const [editors, setEditors] = useState([]);
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -58,23 +62,25 @@ function AddEditor() {
         const data = await res.json();
         if (data.status === "success") {
             logAction("Create Editor", `Created new editor account: ${username}`);
-            alert("Editor added successfully");
+            toast("Editor added successfully!", "success");
             setUsername("");
             setPassword("");
             loadEditors();
         } else {
-            alert("Error: " + data.message);
+            toast("Error: " + data.message, "error");
         }
     };
 
     const deleteEditor = async (id) => {
-        if (!window.confirm("Delete this editor?")) return;
+        const confirmed = await confirm("This editor account will be permanently removed.", "Delete Editor?", "danger");
+        if (!confirmed) return;
         await fetch(`${API_BASE_URL}/deleteEditor`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id }),
         });
         logAction("Delete Editor", `Removed editor with ID: ${id}`);
+        toast("Editor removed successfully.", "success");
         loadEditors();
     };
 

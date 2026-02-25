@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 import API_BASE_URL from "./config";
 import "./login.css";
 
@@ -11,6 +12,7 @@ function Login() {
 
   const navigate = useNavigate();
   const { setAuth } = useAuth();
+  const { toast } = useToast();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,11 +30,11 @@ function Login() {
         setAuth(data.user);
         navigate("/");
       } else {
-        alert(data.message || "Incorrect username or password");
+        toast(data.message || "Incorrect username or password", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Login failed. Please check server connection.");
+      toast("Login failed. Please check server connection.", "error");
     } finally {
       setLoading(false);
     }

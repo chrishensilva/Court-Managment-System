@@ -1,14 +1,17 @@
 import "./Form.css";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 
 function AddLawyer() {
   const { hasPermission, logAction } = useAuth();
+  const { toast } = useToast();
+
   const handleSubmit = (e) => {
-    e.preventDefault(); // 🚫 stop page reload
+    e.preventDefault();
 
     if (!hasPermission('addlawyer')) {
-      alert("You do not have permission to add lawyers.");
+      toast("You do not have permission to add lawyers.", "warning");
       return;
     }
 
@@ -24,14 +27,14 @@ function AddLawyer() {
       .then((data) => {
         if (data.status === "success") {
           logAction("Insert Lawyer", `Added lawyer: ${dataObj.name} (NIC: ${dataObj.nic})`);
-          alert(data.message || "Lawyer added successfully"); // ✅ SUCCESS ALERT
+          toast(data.message || "Lawyer added successfully", "success");
           e.target.reset();
         } else {
-          alert("Error: " + data.message);
+          toast("Error: " + data.message, "error");
         }
       })
       .catch(() => {
-        alert("Server error");
+        toast("Server error. Please try again.", "error");
       });
   };
 

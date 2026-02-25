@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import "./Form.css";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 
 function AddUser({ onSuccess }) {
   const [lawyers, setLawyers] = useState([]);
   const { hasPermission, logAction } = useAuth();
+  const { toast } = useToast();
 
   // Fetch lawyers list
   useEffect(() => {
@@ -19,7 +21,7 @@ function AddUser({ onSuccess }) {
     e.preventDefault();
 
     if (!hasPermission('adduser')) {
-      alert("You do not have permission to add cases.");
+      toast("You do not have permission to add cases.", "warning");
       return;
     }
 
@@ -35,12 +37,14 @@ function AddUser({ onSuccess }) {
     const data = await res.json();
     if (data.status === "success") {
       logAction("Insert Case", `Added case: ${dataObj.name} (Number: ${dataObj.nic})`);
+      toast("Case record added successfully!", "success");
+    } else {
+      toast("Error: " + (data.message || "Failed to add case"), "error");
     }
 
     e.target.reset();
     onSuccess && onSuccess();
   };
-
 
   return (
     <div className="container" id="adduser">

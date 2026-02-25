@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 
 function UserPage() {
   const { user, hasPermission, logAction } = useAuth();
+  const { toast, confirm } = useToast();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
-  const [message, setMessage] = useState("");
-  const [msgType, setMsgType] = useState("");
 
   // Load users
   const loadUsers = () => {
@@ -27,12 +27,13 @@ function UserPage() {
   };
 
   // Delete user
-  const deleteUser = (nic) => {
+  const deleteUser = async (nic) => {
     if (user?.role !== 'admin') {
-      alert("Only admins can delete cases.");
+      toast("Only admins can delete cases.", "warning");
       return;
     }
-    if (!window.confirm("Are you sure you want to delete this record?")) return;
+    const confirmed = await confirm("This will permanently delete this case record.", "Delete Case?", "danger");
+    if (!confirmed) return;
 
     fetch(`${API_BASE_URL}/deleteUser`, {
       method: "POST",
@@ -43,9 +44,10 @@ function UserPage() {
       .then((data) => {
         if (data.status === "success") {
           logAction("Delete Case", `Deleted case with number: ${nic}`);
+          toast("Case record deleted successfully.", "success");
+        } else {
+          toast(data.message || "Failed to delete record.", "error");
         }
-        setMessage(data.message || "Record deleted");
-        setMsgType(data.status === "success" ? "success" : "error");
         loadUsers();
       });
   };
@@ -53,7 +55,7 @@ function UserPage() {
   // Update status
   const updateStatus = async (nic, status) => {
     if (!hasPermission('cases')) {
-      alert("You do not have permission to update status.");
+      toast("You do not have permission to update status.", "warning");
       return;
     }
     try {
@@ -65,9 +67,10 @@ function UserPage() {
       const data = await res.json();
       if (data.status === "success") {
         logAction("Update Status", `Changed status for case ${nic} to "${status}"`);
+        toast(`Status updated to "${status}"`, "success");
         loadUsers();
       } else {
-        alert("Failed to update status");
+        toast("Failed to update status.", "error");
       }
     } catch (err) {
       console.error(err);
@@ -80,9 +83,9 @@ function UserPage() {
 
   const getRowColor = (status) => {
     switch (status) {
-      case "concluded": return "#d4edda"; // Light Green
-      case "ongoing": return "#fff3cd"; // Light Orange/Yellow
-      case "other": return "#e2e3e5"; // Light Gray
+      case "concluded": return "#d4edda";
+      case "ongoing": return "#fff3cd";
+      case "other": return "#e2e3e5";
       default: return "";
     }
   };
@@ -108,21 +111,10 @@ function UserPage() {
           </div>
         </div>
 
-        {/* Delete Message */}
-        {message && (
-          <div className={`message-box ${msgType}`}>
-            <span dangerouslySetInnerHTML={{ __html: message }} />
-            <button className="close-btn" onClick={() => setMessage("")}>
-              &times;
-            </button>
-          </div>
-        )}
-
         {/* Table */}
         <div className="table-container">
           <table className="styled-table" data-aos="fade-up">
             <thead>
-              {/* ... (headers remain the same) */}
               <tr>
                 <th>Name</th>
                 <th>Case Number</th>

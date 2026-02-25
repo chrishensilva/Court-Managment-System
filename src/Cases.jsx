@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import LoadingModal from "./LoadingModal";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
+import { useToast } from "./ToastContext";
 
 function Cases() {
   const [users, setUsers] = useState([]);
   const [lawyers, setLawyers] = useState([]);
   const { user, hasPermission, logAction } = useAuth();
+  const { toast, confirm } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [loadingSubMessage, setLoadingSubMessage] = useState("");
@@ -28,12 +30,16 @@ function Cases() {
   // Assign lawyer
   const assignLawyer = async (nic, lawyer) => {
     if (!hasPermission('assign')) {
-      alert("You do not have permission to assign lawyers.");
+      toast("You do not have permission to assign lawyers.", "warning");
       return;
     }
-    if (!lawyer) return; // Don't proceed if no lawyer selected
+    if (!lawyer) return;
 
-    const sendEmail = window.confirm("Send email to lawyer?");
+    const sendEmail = await confirm(
+      "Do you want to send an email notification to the assigned lawyer?",
+      "Send Email Notification?",
+      "primary"
+    );
 
     // Show loading modal
     setLoading(true);
@@ -47,33 +53,30 @@ function Cases() {
         body: JSON.stringify({ nic, lawyer, sendEmail }),
       });
 
-
       const text = await res.text();
       console.log("RAW RESPONSE:", text);
-
       const data = JSON.parse(text);
 
-      // Hide loading
       setLoading(false);
 
       if (data.status === "success") {
         logAction("Assign Lawyer", `Assigned ${lawyer} to case ${nic}`);
-        alert(data.message || "Lawyer assigned successfully");
+        toast(data.message || "Lawyer assigned successfully", "success");
         loadUsers();
       } else {
-        alert("Assign lawyer failed: " + (data.message || "Unknown error"));
+        toast("Assign lawyer failed: " + (data.message || "Unknown error"), "error");
       }
     } catch (err) {
       console.error("Assign lawyer failed:", err);
       setLoading(false);
-      alert("Assign lawyer failed. Check console.");
+      toast("Assign lawyer failed. Check console.", "error");
     }
   };
 
   // Update status
   const updateStatus = async (nic, status) => {
     if (!hasPermission('cases')) {
-      alert("You do not have permission to update status.");
+      toast("You do not have permission to update status.", "warning");
       return;
     }
     try {
@@ -85,9 +88,10 @@ function Cases() {
       const data = await res.json();
       if (data.status === "success") {
         logAction("Update Status", `Updated status of case ${nic} to ${status}`);
+        toast(`Status updated to "${status}"`, "success");
         loadUsers();
       } else {
-        alert("Failed to update status");
+        toast("Failed to update status", "error");
       }
     } catch (err) {
       console.error(err);
@@ -101,9 +105,9 @@ function Cases() {
 
   const getRowColor = (status) => {
     switch (status) {
-      case "concluded": return "#d4edda"; // Light Green
-      case "ongoing": return "#fff3cd"; // Light Orange/Yellow
-      case "other": return "#e2e3e5"; // Light Gray
+      case "concluded": return "#d4edda";
+      case "ongoing": return "#fff3cd";
+      case "other": return "#e2e3e5";
       default: return "";
     }
   };
@@ -122,7 +126,6 @@ function Cases() {
         <div className="table-container">
           <table className="styled-table">
             <thead>
-              {/* ... (headers remain the same) */}
               <tr>
                 <th>Name</th>
                 <th>Case Number</th>
