@@ -11,9 +11,11 @@ function AddUser({ onSuccess }) {
 
   // Fetch lawyers list
   useEffect(() => {
-    fetch(`${API_BASE_URL}/getLawyers`)
+    fetch(`${API_BASE_URL}/getLawyers`, {
+      credentials: 'include'
+    })
       .then((res) => res.json())
-      .then((data) => setLawyers(data))
+      .then((data) => setLawyers(data.data || [])) // Handle paginated response
       .catch((err) => console.error(err));
   }, []);
 
@@ -31,6 +33,7 @@ function AddUser({ onSuccess }) {
     const res = await fetch(`${API_BASE_URL}/addUser`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: 'include',
       body: JSON.stringify(dataObj),
     });
 

@@ -15,16 +15,28 @@ function Cases() {
 
   // Load lawyers
   const loadLawyers = async () => {
-    const res = await fetch(`${API_BASE_URL}/getLawyers`);
-    const data = await res.json();
-    setLawyers(data);
+    const res = await fetch(`${API_BASE_URL}/getLawyers?limit=100`, {
+      credentials: 'include'
+    });
+    const result = await res.json();
+    if (result && Array.isArray(result.data)) {
+      setLawyers(result.data);
+    } else {
+      setLawyers([]);
+    }
   };
 
   // Load users with cases
   const loadUsers = async () => {
-    const res = await fetch(`${API_BASE_URL}/getUserCases`);
+    const res = await fetch(`${API_BASE_URL}/getUserCases`, {
+      credentials: 'include'
+    });
     const data = await res.json();
-    setUsers(data);
+    if (Array.isArray(data)) {
+      setUsers(data);
+    } else {
+      setUsers([]);
+    }
   };
 
   // Assign lawyer
@@ -52,6 +64,7 @@ function Cases() {
       const res = await fetch(`${API_BASE_URL}/assignLawyer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({ nic, lawyer, sendEmail }),
       });
 
@@ -85,6 +98,7 @@ function Cases() {
       const res = await fetch(`${API_BASE_URL}/updateStatus`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({ nic, status }),
       });
       const data = await res.json();
@@ -144,7 +158,7 @@ function Cases() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {Array.isArray(users) && users.map((u) => (
                 <tr key={u.nic} style={{ backgroundColor: getRowColor(u.status) }}>
                   <td>{u.name}</td>
                   <td>{u.nic}</td>
@@ -170,13 +184,13 @@ function Cases() {
                   <td>{u.note}</td>
                   <td>
                     <select
-                      defaultValue={u.lawyer_name || ""}
+                      defaultValue={u.assigned_lawyer || ""}
                       onChange={(e) => assignLawyer(u.nic, e.target.value)}
                       disabled={!hasPermission('assign')}
                     >
                       <option value="">Select</option>
-                      {lawyers.map((l) => (
-                        <option key={l.name} value={l.name}>
+                      {Array.isArray(lawyers) && lawyers.map((l) => (
+                        <option key={l.nic} value={l.name}>
                           {l.name}
                         </option>
                       ))}

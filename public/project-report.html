@@ -1,0 +1,1202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Court Case Management System — Project Report</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Inter", sans-serif;
+        color: #1e293b;
+        background: #fff;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      /* ─── PRINT ─── */
+      @media print {
+        .no-print {
+          display: none !important;
+        }
+        body {
+          font-size: 11px;
+        }
+        .page-break {
+          page-break-before: always;
+        }
+        section {
+          page-break-inside: avoid;
+        }
+        .cover {
+          page-break-after: always;
+        }
+      }
+
+      /* ─── NAV ─── */
+      .no-print {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: #1e293b;
+        padding: 10px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .no-print span {
+        color: #94a3b8;
+        font-size: 13px;
+      }
+      .print-btn {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: #fff;
+        border: none;
+        padding: 8px 22px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        letter-spacing: 0.3px;
+      }
+
+      /* ─── WRAPPER ─── */
+      .wrapper {
+        max-width: 900px;
+        margin: 60px auto 40px;
+        padding: 0 24px;
+      }
+
+      /* ─── COVER ─── */
+      .cover {
+        text-align: center;
+        padding: 80px 40px 60px;
+        background: linear-gradient(
+          135deg,
+          #0f172a 0%,
+          #1e3a5f 50%,
+          #0f172a 100%
+        );
+        color: #fff;
+        border-radius: 16px;
+        margin-bottom: 40px;
+      }
+      .cover-badge {
+        display: inline-block;
+        background: rgba(99, 102, 241, 0.3);
+        border: 1px solid rgba(99, 102, 241, 0.5);
+        color: #a5b4fc;
+        padding: 4px 16px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+      }
+      .cover h1 {
+        font-size: 32px;
+        font-weight: 800;
+        margin-bottom: 12px;
+        line-height: 1.2;
+      }
+      .cover h1 span {
+        color: #818cf8;
+      }
+      .cover p {
+        color: #94a3b8;
+        font-size: 14px;
+        margin-bottom: 32px;
+      }
+      .cover-meta {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        flex-wrap: wrap;
+        margin-top: 32px;
+      }
+      .cover-meta div {
+        text-align: center;
+      }
+      .cover-meta .label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #64748b;
+      }
+      .cover-meta .value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin-top: 2px;
+      }
+      .cover-divider {
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, #6366f1, #818cf8);
+        margin: 28px auto;
+        border-radius: 2px;
+      }
+
+      /* ─── SECTION ─── */
+      section {
+        margin-bottom: 36px;
+      }
+      .section-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1e293b;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section-title .icon {
+        font-size: 18px;
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #334155;
+        margin: 16px 0 6px;
+      }
+      p {
+        color: #475569;
+        margin-bottom: 8px;
+      }
+
+      /* ─── TABLE ─── */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 12px;
+      }
+      th {
+        background: #1e293b;
+        color: #fff;
+        padding: 8px 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+      }
+      td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+      }
+      tr:nth-child(even) td {
+        background: #f8fafc;
+      }
+      tr:hover td {
+        background: #f1f5f9;
+      }
+
+      /* ─── BADGES ─── */
+      .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .badge-blue {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .badge-green {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      .badge-purple {
+        background: #ede9fe;
+        color: #6d28d9;
+      }
+      .badge-orange {
+        background: #ffedd5;
+        color: #c2410c;
+      }
+      .badge-gray {
+        background: #f1f5f9;
+        color: #475569;
+      }
+
+      /* ─── CARDS ─── */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 14px;
+        margin: 16px 0;
+      }
+      .card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+        border-left: 4px solid #6366f1;
+      }
+      .card h4 {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+      .card p {
+        font-size: 20px;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0;
+      }
+
+      /* ─── CODE BLOCK ─── */
+      .code-block {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 14px 18px;
+        border-radius: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 11.5px;
+        overflow-x: auto;
+        margin: 10px 0;
+        line-height: 1.7;
+      }
+      .code-block .kw {
+        color: #818cf8;
+      }
+      .code-block .str {
+        color: #86efac;
+      }
+      .code-block .cm {
+        color: #64748b;
+      }
+
+      /* ─── UL / OL ─── */
+      ul,
+      ol {
+        padding-left: 20px;
+        margin: 8px 0;
+        color: #475569;
+      }
+      li {
+        margin-bottom: 4px;
+      }
+      li strong {
+        color: #1e293b;
+      }
+
+      /* ─── HIGHLIGHT BOX ─── */
+      .info-box {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 12px 16px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        color: #1e40af;
+      }
+      .warn-box {
+        background: #fffbeb;
+        border-left: 4px solid #f59e0b;
+        padding: 12px 16px;
+        border-radius: 0 8px 8px 0;
+        margin: 12px 0;
+        color: #92400e;
+      }
+
+      /* ─── FLOW DIAGRAM ─── */
+      .flow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+      .flow-box {
+        background: #1e293b;
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .flow-arrow {
+        color: #6366f1;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      /* ─── FOOTER ─── */
+      .footer {
+        text-align: center;
+        padding: 24px;
+        color: #94a3b8;
+        font-size: 11px;
+        border-top: 1px solid #e2e8f0;
+        margin-top: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sticky Print Bar -->
+    <div class="no-print">
+      <span>📄 Court Case Management System — Project Report</span>
+      <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+    </div>
+
+    <div class="wrapper">
+      <!-- ═══════════════════════════════════ COVER ═════════════════════════════════ -->
+      <div class="cover">
+        <div class="cover-badge">Technical Project Report</div>
+        <h1>Court Case <span>Management</span> System</h1>
+        <p>
+          A full-stack web application for managing legal cases, lawyers, and
+          court schedules
+        </p>
+        <div class="cover-divider"></div>
+        <div class="cover-meta">
+          <div>
+            <div class="label">Developer</div>
+            <div class="value">Chrishen Silva</div>
+          </div>
+          <div>
+            <div class="label">Version</div>
+            <div class="value">1.0.0 (Web)</div>
+          </div>
+          <div>
+            <div class="label">Date</div>
+            <div class="value">February 2026</div>
+          </div>
+          <div>
+            <div class="label">Stack</div>
+            <div class="value">React + Express + MySQL</div>
+          </div>
+          <div>
+            <div class="label">Repository</div>
+            <div class="value">github.com/chrishensilva</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════ 1. OVERVIEW ═══════════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">📋</span> 1. Project Overview
+        </div>
+        <p>
+          The <strong>Court Case Management System</strong> is a modern,
+          full-stack web application designed for law firms and court
+          administrators to efficiently manage cases, clients, lawyers, court
+          dates, and assignments. The system provides role-based access control,
+          real-time data, PDF/CSV report generation, email notifications, and a
+          comprehensive activity log.
+        </p>
+
+        <div class="card-grid">
+          <div class="card">
+            <h4>Frontend Pages</h4>
+            <p>9</p>
+          </div>
+          <div class="card">
+            <h4>API Endpoints</h4>
+            <p>16</p>
+          </div>
+          <div class="card">
+            <h4>Database Tables</h4>
+            <p>6</p>
+          </div>
+          <div class="card">
+            <h4>User Roles</h4>
+            <p>2</p>
+          </div>
+        </div>
+
+        <div class="info-box">
+          <strong>Live Deployment:</strong> The application is hosted on
+          Railway.app with cloud MySQL database on Aiven. The GitHub repository
+          is at
+          <strong>github.com/chrishensilva/Court-Managment-System</strong>.
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════ 2. TECH STACK ════════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">🛠️</span> 2. Technology Stack
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Technology</th>
+              <th>Version</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-blue">Frontend</span></td>
+              <td>React</td>
+              <td>19.2.0</td>
+              <td>UI Component Framework</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">Frontend</span></td>
+              <td>React Router DOM</td>
+              <td>7.9.6</td>
+              <td>Client-side routing (HashRouter)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">Frontend</span></td>
+              <td>Recharts</td>
+              <td>3.6.0</td>
+              <td>Interactive charts on dashboard</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">Frontend</span></td>
+              <td>Vite</td>
+              <td>7.2.4</td>
+              <td>Build tool & dev server</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">Backend</span></td>
+              <td>Node.js</td>
+              <td>22.x</td>
+              <td>Runtime environment</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">Backend</span></td>
+              <td>Express</td>
+              <td>5.2.1</td>
+              <td>REST API server</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">Backend</span></td>
+              <td>mysql2</td>
+              <td>3.16.1</td>
+              <td>MySQL database driver</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">Backend</span></td>
+              <td>Nodemailer</td>
+              <td>8.0.1</td>
+              <td>Email notifications (Gmail)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">Backend</span></td>
+              <td>dotenv</td>
+              <td>17.3.1</td>
+              <td>Environment variable management</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-purple">Database</span></td>
+              <td>MySQL</td>
+              <td>8.x</td>
+              <td>Primary data store (Aiven Cloud)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">DevOps</span></td>
+              <td>Railway.app</td>
+              <td>—</td>
+              <td>Application hosting (free tier)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">DevOps</span></td>
+              <td>Aiven</td>
+              <td>—</td>
+              <td>Managed MySQL cloud database</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-orange">DevOps</span></td>
+              <td>GitHub</td>
+              <td>—</td>
+              <td>Version control & CI/CD</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═══════════════════════════════ 3. ARCHITECTURE ═══════════════════════ -->
+      <section class="page-break">
+        <div class="section-title">
+          <span class="icon">🏗️</span> 3. System Architecture
+        </div>
+        <p>
+          The application uses a
+          <strong>monolithic full-stack architecture</strong> where the Express
+          server serves both the REST API and the compiled React frontend as
+          static files in production.
+        </p>
+
+        <h3>Request Flow</h3>
+        <div class="flow">
+          <div class="flow-box">Browser</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Railway (HTTPS)</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Express Server (Port 5000)</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">mysql2 Driver</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Aiven MySQL</div>
+        </div>
+
+        <h3>Project Structure</h3>
+        <div class="code-block">
+          <span class="cm">Court-Managment-System/</span>
+          ├── <span class="kw">src/</span> │ ├── <span class="kw">js/</span> │ │
+          ├── server.js
+          <span class="cm"># Express API server (entry point)</span> │ │ └──
+          db.js <span class="cm"># MySQL connection pool</span> │ ├── App.jsx
+          <span class="cm"># Route definitions (HashRouter)</span> │ ├──
+          main.jsx <span class="cm"># React entry point</span> │ ├──
+          AuthContext.jsx <span class="cm"># Authentication state</span> │ ├──
+          ToastContext.jsx
+          <span class="cm"># Global toast/confirm system</span> │ ├── config.js
+          <span class="cm"># Dynamic API base URL</span> │ ├── DashboardPage.jsx
+          <span class="cm"># Dashboard with stats</span> │ ├── Lawyers.jsx
+          <span class="cm"># Lawyers list & delete</span> │ ├── UserPage.jsx
+          <span class="cm"># Cases list & manage</span> │ ├── Cases.jsx
+          <span class="cm"># Assign lawyers to cases</span> │ ├── AddUser.jsx
+          <span class="cm"># Add new case record</span> │ ├── AddLawyer.jsx
+          <span class="cm"># Add new lawyer</span> │ ├── AddEditor.jsx
+          <span class="cm"># Manage editor accounts</span> │ ├──
+          GenerateReport.jsx <span class="cm"># Print / CSV export</span> │ ├──
+          ActivityLogs.jsx <span class="cm"># System activity log</span> │ ├──
+          Login.jsx <span class="cm"># Login page</span> │ └── Sidebar.jsx
+          <span class="cm"># Navigation sidebar</span> ├──
+          <span class="kw">public/</span>
+          <span class="cm"># Static assets</span> ├── .env
+          <span class="cm"># Environment variables (local)</span>
+          ├── package.json └── vite.config.js
+        </div>
+
+        <h3>Environment Configuration</h3>
+        <div class="code-block">
+          <span class="cm"># .env (local) — not committed to GitHub</span>
+          <span class="kw">DB_HOST</span>=<span class="str"
+            >mysql-352d00d5-chrishensilva-308b.h.aivencloud.com</span
+          >
+          <span class="kw">DB_USER</span>=<span class="str">avnadmin</span>
+          <span class="kw">DB_PASSWORD</span>=<span class="str"
+            >***********</span
+          >
+          <span class="kw">DB_NAME</span>=<span class="str">defaultdb</span>
+          <span class="kw">DB_PORT</span>=<span class="str">10541</span>
+          <span class="kw">PORT</span>=<span class="str">5000</span>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════ 4. DATABASE ════════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">🗄️</span> 4. Database Design
+        </div>
+        <p>
+          The database is hosted on
+          <strong>Aiven Managed MySQL</strong> (cloud). All tables are
+          automatically created on first server start via the
+          <code>initMySQL()</code> function.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Primary Key</th>
+              <th>Columns</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>userdata</strong></td>
+              <td>nic (VARCHAR)</td>
+              <td>
+                name, email, number, address, lawyer1/2/3, note, last_date,
+                next_date, casetype, status
+              </td>
+              <td>Stores all case/client records</td>
+            </tr>
+            <tr>
+              <td><strong>lawyerdata</strong></td>
+              <td>nic (VARCHAR)</td>
+              <td>name, email, contact, note</td>
+              <td>Stores lawyer profiles</td>
+            </tr>
+            <tr>
+              <td><strong>case_assignments</strong></td>
+              <td>user_nic + lawyer_name</td>
+              <td>assigned_date</td>
+              <td>Tracks lawyer–case assignments</td>
+            </tr>
+            <tr>
+              <td><strong>todo</strong></td>
+              <td>id (INT AUTO_INCREMENT)</td>
+              <td>task, date, time</td>
+              <td>Dashboard to-do list</td>
+            </tr>
+            <tr>
+              <td><strong>editors</strong></td>
+              <td>id (INT AUTO_INCREMENT)</td>
+              <td>username, password, permissions</td>
+              <td>Sub-user accounts with permissions</td>
+            </tr>
+            <tr>
+              <td><strong>activity_log</strong></td>
+              <td>id (INT AUTO_INCREMENT)</td>
+              <td>username, action, details, timestamp</td>
+              <td>Full audit trail of all actions</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="warn-box">
+          <strong>Security Note:</strong> Passwords for editor accounts are
+          currently stored in plain text. A future enhancement would be to hash
+          passwords using <code>bcrypt</code> before storing.
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════ 5. API ENDPOINTS ═══════════════════════ -->
+      <section class="page-break">
+        <div class="section-title">
+          <span class="icon">🔌</span> 5. API Endpoints
+        </div>
+        <p>
+          All API routes are prefixed with <code>/api</code> and served by the
+          Express server on port <strong>5000</strong>.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/login</td>
+              <td>Authenticate admin or editor user</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getLawyers</td>
+              <td>Fetch all lawyers (with optional search)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/addLawyer</td>
+              <td>Add a new lawyer record</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/deleteLawyer</td>
+              <td>Delete a lawyer by NIC</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getUsers</td>
+              <td>Fetch all cases (with optional search)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getUserCases</td>
+              <td>Fetch cases with assigned lawyer (JOIN)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/addUser</td>
+              <td>Add a new case record</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/deleteUser</td>
+              <td>Delete a case by NIC</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/assignLawyer</td>
+              <td>Assign a lawyer to a case + optional email</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/updateStatus</td>
+              <td>Update case status (ongoing/concluded/other)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getTodos</td>
+              <td>Fetch all to-do tasks</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/addTodo</td>
+              <td>Add a to-do task</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/deleteTodo</td>
+              <td>Delete a to-do task</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/dashboard_counts</td>
+              <td>Fetch total clients, lawyers, cases</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getCaseStats</td>
+              <td>Case count grouped by type (for chart)</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getReportData</td>
+              <td>All case data for report generation</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getEditors</td>
+              <td>Fetch all editor accounts</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/addEditor</td>
+              <td>Create new editor account with permissions</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/deleteEditor</td>
+              <td>Remove an editor account by ID</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-green">GET</span></td>
+              <td>/api/getActivityLogs</td>
+              <td>Fetch last 500 activity log entries</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-blue">POST</span></td>
+              <td>/api/logAction</td>
+              <td>Log a user action to the activity log</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═══════════════════════════════ 6. FEATURES ════════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">✨</span> 6. Application Features
+        </div>
+
+        <h3>6.1 Authentication & Role-Based Access Control</h3>
+        <p>
+          The system has two user roles. Sessions are persisted in
+          <code>localStorage</code>.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Access</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-purple">Admin</span></td>
+              <td>
+                Full access to all modules including editor management, activity
+                logs, and delete operations
+              </td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-gray">Editor</span></td>
+              <td>
+                Configurable access — admin grants permissions per module
+                (dashboard, lawyers, cases, assign, addlawyer, adduser, report)
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>6.2 Dashboard</h3>
+        <ul>
+          <li>
+            Live count cards for <strong>Total Clients</strong>,
+            <strong>Lawyers</strong>, and <strong>Cases</strong>
+          </li>
+          <li>
+            <strong>Pie chart</strong> (Recharts) showing cases by court type
+          </li>
+          <li>
+            <strong>To-Do App</strong> — tasks with date/time, stored in MySQL
+          </li>
+        </ul>
+
+        <h3>6.3 Case Management</h3>
+        <ul>
+          <li>
+            Add/delete case records with full client details (name, NIC, email,
+            contact, address, lawyers, notes, dates)
+          </li>
+          <li>
+            Status tracking: <strong>Ongoing</strong> /
+            <strong>Concluded</strong> / <strong>Other</strong> with color-coded
+            rows
+          </li>
+          <li>Search by case number or name</li>
+        </ul>
+
+        <h3>6.4 Lawyer Assignment</h3>
+        <ul>
+          <li>
+            Assign lawyers to cases via an inline dropdown on the Assign Cases
+            page
+          </li>
+          <li>
+            Optional <strong>email notification</strong> to the lawyer via Gmail
+            (Nodemailer)
+          </li>
+          <li>Modern confirm dialog — Cancel aborts the entire assignment</li>
+        </ul>
+
+        <h3>6.5 Report Generation</h3>
+        <ul>
+          <li>Filter cases by court type</li>
+          <li>
+            Summary statistics: total, assigned, unassigned, upcoming hearings
+            (within 30 days)
+          </li>
+          <li><strong>Print to PDF</strong> via browser print dialog</li>
+          <li><strong>Export to CSV</strong> with all case fields</li>
+        </ul>
+
+        <h3>6.6 Editor Management (Admin Only)</h3>
+        <ul>
+          <li>Create sub-user accounts with granular permission control</li>
+          <li>Delete editor accounts</li>
+          <li>Permissions stored as JSON array in MySQL</li>
+        </ul>
+
+        <h3>6.7 Activity Logs (Admin Only)</h3>
+        <ul>
+          <li>
+            Every action (login, insert, delete, update, assign) is
+            automatically logged
+          </li>
+          <li>Shows last 500 log entries sorted by timestamp</li>
+        </ul>
+
+        <h3>6.8 Modern Notification System</h3>
+        <ul>
+          <li>
+            Replaced all native <code>alert()</code> and
+            <code>window.confirm()</code> calls
+          </li>
+          <li>
+            <strong>Toast Notifications</strong>: slide-in from top-right, 4
+            types (success/error/warning/info), auto-dismiss with progress bar
+          </li>
+          <li>
+            <strong>Confirm Dialogs</strong>: glassmorphism modal with dark
+            theme, returns Promise for async/await usage
+          </li>
+        </ul>
+      </section>
+
+      <!-- ═══════════════════════════════ 7. PAGES ════════════════════════════ -->
+      <section class="page-break">
+        <div class="section-title">
+          <span class="icon">📄</span> 7. Application Pages & Routes
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Route</th>
+              <th>Component</th>
+              <th>Access</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>/login</td>
+              <td>Login.jsx</td>
+              <td>Public</td>
+              <td>Username/password login form</td>
+            </tr>
+            <tr>
+              <td>/</td>
+              <td>DashboardPage.jsx</td>
+              <td>dashboard perm</td>
+              <td>Stats cards, chart, to-do</td>
+            </tr>
+            <tr>
+              <td>/lawyers</td>
+              <td>Lawyers.jsx</td>
+              <td>lawyers perm</td>
+              <td>List & delete lawyers</td>
+            </tr>
+            <tr>
+              <td>/clients</td>
+              <td>UserPage.jsx</td>
+              <td>cases perm</td>
+              <td>View & manage case records</td>
+            </tr>
+            <tr>
+              <td>/cases</td>
+              <td>Cases.jsx</td>
+              <td>assign perm</td>
+              <td>Assign lawyers to cases</td>
+            </tr>
+            <tr>
+              <td>/adduser</td>
+              <td>AddUser.jsx</td>
+              <td>adduser perm</td>
+              <td>Add new case/client record</td>
+            </tr>
+            <tr>
+              <td>/addlawyer</td>
+              <td>AddLawyer.jsx</td>
+              <td>addlawyer perm</td>
+              <td>Add new lawyer</td>
+            </tr>
+            <tr>
+              <td>/report</td>
+              <td>GenerateReport.jsx</td>
+              <td>report perm</td>
+              <td>View, filter, print, export cases</td>
+            </tr>
+            <tr>
+              <td>/addeditor</td>
+              <td>AddEditor.jsx</td>
+              <td>Admin only</td>
+              <td>Create/delete editor accounts</td>
+            </tr>
+            <tr>
+              <td>/logs</td>
+              <td>ActivityLogs.jsx</td>
+              <td>Admin only</td>
+              <td>View full audit log</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═════════════════════════════ 8. DEPLOYMENT ═══════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">🚀</span> 8. Deployment Architecture
+        </div>
+
+        <h3>Railway.app (Backend + Frontend)</h3>
+        <ul>
+          <li>
+            <strong>Build Command:</strong>
+            <code>npm install && npm run build</code>
+          </li>
+          <li>
+            <strong>Start Command:</strong> <code>node src/js/server.js</code>
+          </li>
+          <li>
+            In production (<code>NODE_ENV=production</code>), Express serves the
+            compiled <code>/dist</code> folder as static files
+          </li>
+          <li>
+            A catch-all <code>app.use()</code> middleware serves
+            <code>index.html</code> for all non-API routes (SPA support)
+          </li>
+        </ul>
+
+        <h3>Aiven (MySQL Database)</h3>
+        <ul>
+          <li>
+            Managed cloud MySQL with SSL connection on port
+            <strong>10541</strong>
+          </li>
+          <li>Connection details passed via Railway environment variables</li>
+          <li>Tables auto-created on startup if they don't exist</li>
+        </ul>
+
+        <h3>GitHub (CI/CD)</h3>
+        <ul>
+          <li>
+            Repository:
+            <strong>github.com/chrishensilva/Court-Managment-System</strong>
+          </li>
+          <li>
+            Every push to <code>main</code> triggers automatic redeploy on
+            Railway
+          </li>
+          <li>
+            <code>.env</code>, <code>dist/</code>, <code>dist_electron/</code>,
+            <code>node_modules/</code> excluded via <code>.gitignore</code>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ═══════════════════════════ 9. KEY DECISIONS ═══════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">💡</span> 9. Key Design Decisions
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>Rationale</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>HashRouter instead of BrowserRouter</td>
+              <td>
+                Works on static file hosts without server-side routing
+                configuration
+              </td>
+            </tr>
+            <tr>
+              <td>Monolithic server (API + static files)</td>
+              <td>
+                Simplifies deployment — only one Railway service needed (free
+                tier)
+              </td>
+            </tr>
+            <tr>
+              <td><code>app.use()</code> for SPA catch-all</td>
+              <td>
+                Express v5 changed wildcard route syntax;
+                <code>app.use()</code> avoids path-to-regexp entirely
+              </td>
+            </tr>
+            <tr>
+              <td>MySQL connection pool</td>
+              <td>
+                Reuses connections for better performance under load;
+                10-connection limit
+              </td>
+            </tr>
+            <tr>
+              <td>Environment variables via dotenv</td>
+              <td>
+                Keeps credentials out of source code; compatible with Railway's
+                variable injection
+              </td>
+            </tr>
+            <tr>
+              <td>Toast Context (no library)</td>
+              <td>
+                Avoids adding dependencies; gives full control over styling and
+                behavior
+              </td>
+            </tr>
+            <tr>
+              <td><code>import.meta.env.PROD</code> for API URL</td>
+              <td>
+                Automatically uses relative <code>/api</code> in production and
+                <code>localhost:5000</code> in dev
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═══════════════════════════ 10. FUTURE IMPROVEMENTS ═══════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">🔮</span> 10. Future Improvements
+        </div>
+        <ul>
+          <li>
+            <strong>Password hashing:</strong> Implement <code>bcrypt</code> for
+            editor account passwords
+          </li>
+          <li>
+            <strong>JWT Authentication:</strong> Replace localStorage sessions
+            with secure JWT tokens
+          </li>
+          <li>
+            <strong>Pagination:</strong> Add server-side pagination for large
+            datasets
+          </li>
+          <li>
+            <strong>File Uploads:</strong> Attach court documents (PDFs) to case
+            records
+          </li>
+          <li>
+            <strong>Calendar View:</strong> Visual calendar for upcoming court
+            dates
+          </li>
+          <li>
+            <strong>Real-time Updates:</strong> Use WebSockets or Server-Sent
+            Events for live data
+          </li>
+          <li>
+            <strong>Mobile App:</strong> React Native version using the same
+            Express API
+          </li>
+          <li>
+            <strong>Audit Improvements:</strong> IP address logging in activity
+            log
+          </li>
+          <li>
+            <strong>Multi-language Support:</strong> i18n for Sinhala/Tamil
+            interface
+          </li>
+        </ul>
+      </section>
+
+      <!-- ═══════════════════════════ 11. KNOWN ISSUES ══════════════════════════ -->
+      <section>
+        <div class="section-title">
+          <span class="icon">⚠️</span> 11. Known Issues & Limitations
+        </div>
+        <ul>
+          <li>
+            Passwords for editor accounts are stored in plain text (no hashing)
+          </li>
+          <li>
+            Admin password (<code>admin/123</code>) is hardcoded in
+            <code>server.js</code>
+          </li>
+          <li>
+            No rate limiting on API endpoints — could be vulnerable to brute
+            force
+          </li>
+          <li>First load on Railway may be slow (cold start on free tier)</li>
+          <li>
+            Email credentials (Gmail App Password) are stored in environment
+            variables — should be rotated periodically
+          </li>
+        </ul>
+      </section>
+
+      <!-- ═════════════════════════════ FOOTER ═══════════════════════════════════ -->
+      <div class="footer">
+        <p>
+          <strong>Court Case Management System</strong> — Project Report v1.0
+        </p>
+        <p>
+          Developed by Chrishen Silva &nbsp;|&nbsp; February 2026 &nbsp;|&nbsp;
+          github.com/chrishensilva/Court-Managment-System
+        </p>
+        <!--<p style="margin-top:8px;">To save as PDF: Click the <strong>"Save as PDF"</strong> button above, then choose "Save as PDF" as your printer destination.</p>-->
+      </div>
+    </div>
+  </body>
+</html>

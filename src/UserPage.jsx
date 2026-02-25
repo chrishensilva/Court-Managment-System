@@ -2,20 +2,32 @@ import { useEffect, useState } from "react";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
+import "./UserPage.css";
 
 function UserPage() {
   const { user, hasPermission, logAction } = useAuth();
   const { toast, confirm } = useToast();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10;
+
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [currentNic, setCurrentNic] = useState(null);
+  const [documents, setDocuments] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   // Load users
   const loadUsers = () => {
-    fetch(`${API_BASE_URL}/getUsers?search=${search}`)
+    fetch(`${API_BASE_URL}/getUsers?search=${search}&page=${page}&limit=${limit}`, {
+      credentials: 'include'
+    })
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setUsers(data);
+        if (data && Array.isArray(data.data)) {
+          setUsers(data.data);
+          setTotalPages(data.pagination.totalPages);
         } else {
           setUsers([]);
         }
@@ -38,6 +50,7 @@ function UserPage() {
     fetch(`${API_BASE_URL}/deleteUser`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: 'include',
       body: JSON.stringify({ nic }),
     })
       .then((res) => res.json())
@@ -62,6 +75,7 @@ function UserPage() {
       const res = await fetch(`${API_BASE_URL}/updateStatus`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({ nic, status }),
       });
       const data = await res.json();
@@ -77,9 +91,72 @@ function UserPage() {
     }
   };
 
+  const openDocModal = (nic) => {
+    setCurrentNic(nic);
+    setShowDocModal(true);
+    fetchDocuments(nic);
+  };
+
+  const fetchDocuments = (nic) => {
+    fetch(`${API_BASE_URL}/getDocuments/${nic}`, {
+      credentials: 'include'
+    })
+      .then(res => res.json())
+      .then(data => setDocuments(data));
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      toast("Only PDF files are allowed.", "error");
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('nic', currentNic);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/uploadDocument`, {
+        method: "POST",
+        credentials: "include",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        toast("Document uploaded successfully.", "success");
+        fetchDocuments(currentNic);
+      } else {
+        toast(data.message || "Upload failed.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteDocument = (id, path) => {
+    fetch(`${API_BASE_URL}/deleteDocument`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ id, path })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          toast("Document deleted.", "success");
+          fetchDocuments(currentNic);
+        }
+      });
+  };
+
   useEffect(() => {
     loadUsers();
-  }, [search]);
+  }, [search, page]);
 
   const getRowColor = (status) => {
     switch (status) {
@@ -127,6 +204,7 @@ function UserPage() {
                 <th>Court Type</th>
                 <th>Last Court Date</th>
                 <th>Next Court Date</th>
+                <th>Documents</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -165,6 +243,12 @@ function UserPage() {
                   <td>{u.next_date}</td>
 
                   <td>
+                    <button className="btn-small" onClick={() => openDocModal(u.nic)}>
+                      Docs ({documents.filter(d => d.user_nic === u.nic).length || "View"})
+                    </button>
+                  </td>
+
+                  <td>
                     <button
                       className="delete-btn"
                       onClick={() => deleteUser(u.nic)}
@@ -180,6 +264,51 @@ function UserPage() {
         </div>
 
         {users.length === 0 && <p className="no-data">No records found.</p>}
+
+        {showDocModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3>Documents for Case {currentNic}</h3>
+              <div className="doc-list">
+                {documents.map(doc => (
+                  <div key={doc.id} className="doc-item">
+                    <span>{doc.file_name}</span>
+                    <div className="doc-actions">
+                      <a href={`${API_BASE_URL.replace('/api', '')}${doc.file_path}`} target="_blank" rel="noreferrer" className="btn-small">View</a>
+                      <button className="btn-small delete" onClick={() => deleteDocument(doc.id, doc.file_path)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+                {documents.length === 0 && <p>No documents uploaded yet.</p>}
+              </div>
+              <div className="upload-area">
+                <input type="file" accept=".pdf" onChange={handleFileUpload} disabled={uploading} />
+                {uploading && <span>Uploading...</span>}
+              </div>
+              <button className="btn1" onClick={() => setShowDocModal(false)}>Close</button>
+            </div>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="pagination">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+              className="btn1"
+            >
+              Previous
+            </button>
+            <span>Page {page} of {totalPages}</span>
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+              className="btn1"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

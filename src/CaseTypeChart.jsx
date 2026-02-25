@@ -15,7 +15,9 @@ export default function CaseTypeChart({ refresh }) {
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/getCaseStats`)
+    fetch(`${API_BASE_URL}/getCaseStats`, {
+      credentials: 'include'
+    })
       .then((res) => res.json())
       .then((result) => setData(result))
       .catch((err) => console.error(err));

@@ -21,6 +21,7 @@ function AddLawyer() {
     fetch(`${API_BASE_URL}/addLawyer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: 'include',
       body: JSON.stringify(dataObj),
     })
       .then((res) => res.json())

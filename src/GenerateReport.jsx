@@ -17,7 +17,9 @@ function GenerateReport() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_BASE_URL}/getReportData`);
+            const res = await fetch(`${API_BASE_URL}/getReportData`, {
+                credentials: 'include'
+            });
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);

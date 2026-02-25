@@ -1,23 +1,46 @@
-import { createContext, useState, useContext } from "react";
+import { createContext, useState, useContext, useEffect } from "react";
 import API_BASE_URL from "./config";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const loggedIn = !!user;
 
+  useEffect(() => {
+    const verifyUser = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/verifyToken`, {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error("Token verification failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    verifyUser();
+  }, []);
+
   const updateAuth = (userData) => {
-    if (userData) {
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
-    } else {
+    setUser(userData);
+  };
+
+  const logout = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/logout`, {
+        method: "POST",
+        credentials: 'include'
+      });
       setUser(null);
-      localStorage.removeItem("user");
+    } catch (err) {
+      console.error("Logout failed:", err);
     }
   };
 
@@ -33,6 +56,7 @@ export function AuthProvider({ children }) {
       await fetch(`${API_BASE_URL}/logAction`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({ username: user.username, action, details }),
       });
     } catch (err) {
@@ -42,8 +66,8 @@ export function AuthProvider({ children }) {
 
 
   return (
-    <AuthContext.Provider value={{ loggedIn, user, setAuth: updateAuth, hasPermission, logAction }}>
-      {children}
+    <AuthContext.Provider value={{ loggedIn, user, setAuth: updateAuth, logout, hasPermission, logAction, loading }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

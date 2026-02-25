@@ -9,7 +9,9 @@ function ActivityLogs() {
     const loadLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/getActivityLogs`);
+            const res = await fetch(`${API_BASE_URL}/getActivityLogs`, {
+                credentials: 'include'
+            });
             const data = await res.json();
             if (Array.isArray(data)) {
                 setLogs(data);

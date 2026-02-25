@@ -24,7 +24,9 @@ function AddEditor() {
 
     const loadEditors = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/getEditors`);
+            const res = await fetch(`${API_BASE_URL}/getEditors`, {
+                credentials: 'include'
+            });
             const data = await res.json();
             if (Array.isArray(data)) {
                 setEditors(data);
@@ -56,6 +58,7 @@ function AddEditor() {
         const res = await fetch(`${API_BASE_URL}/addEditor`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: 'include',
             body: JSON.stringify({ username, password, permissions: selectedPermissions }),
         });
 
@@ -77,6 +80,7 @@ function AddEditor() {
         await fetch(`${API_BASE_URL}/deleteEditor`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: 'include',
             body: JSON.stringify({ id }),
         });
         logAction("Delete Editor", `Removed editor with ID: ${id}`);

@@ -4,6 +4,12 @@ import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
+import multer from "multer";
+import fs from "fs";
 import { db } from "./db.js";
 
 dotenv.config();
@@ -15,8 +21,33 @@ const app = express();
 const port = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.VITE_FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
+
+// Rate limiting for login
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login requests per windowMs
+  message: { status: 'error', message: "Too many login attempts, please try again after 15 minutes" }
+});
+
+// JWT Verification Middleware
+const authenticateToken = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ status: 'error', message: 'Access denied' });
+
+  try {
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(403).json({ status: 'error', message: 'Invalid token' });
+  }
+};
 
 // Serve React frontend in production
 if (isProduction) {
@@ -64,6 +95,20 @@ const initMySQL = () => {
         if (err) console.error("Error adding status column:", err);
       });
     }
+  });
+
+  // Create case_documents table
+  const createDocsTable = `
+        CREATE TABLE IF NOT EXISTS case_documents (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_nic VARCHAR(255) NOT NULL,
+            file_name VARCHAR(255) NOT NULL,
+            file_path VARCHAR(255) NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `;
+  db.query(createDocsTable, (err) => {
+    if (err) console.error("Error creating docs table:", err);
   });
 };
 
@@ -119,30 +164,91 @@ Court Record Management System`
   }
 }
 
+// --- Multer Setup for File Uploads ---
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'), false);
+    }
+  }
+});
+
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
 // --- API ROUTES ---
 
 // Get all lawyers
-app.get('/api/getLawyers', (req, res) => {
+app.get('/api/getLawyers', authenticateToken, (req, res) => {
   const search = req.query.search || '';
-  const sql = 'SELECT * FROM lawyerdata WHERE nic LIKE ? OR name LIKE ?';
-  db.query(sql, [`%${search}%`, `%${search}%`], (err, data) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
+  const countSql = 'SELECT COUNT(*) as total FROM lawyerdata WHERE nic LIKE ? OR name LIKE ?';
+  db.query(countSql, [`%${search}%`, `%${search}%`], (err, countResults) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(data);
+    const total = countResults[0].total;
+
+    const sql = 'SELECT * FROM lawyerdata WHERE nic LIKE ? OR name LIKE ? LIMIT ? OFFSET ?';
+    db.query(sql, [`%${search}%`, `%${search}%`, limit, offset], (err, data) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        data,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+    });
   });
 });
 
 // Get users (simple list)
-app.get('/api/getUsers', (req, res) => {
+app.get('/api/getUsers', authenticateToken, (req, res) => {
   const search = req.query.search || '';
-  const sql = 'SELECT * FROM userdata WHERE nic LIKE ? OR name LIKE ? ORDER BY next_date ASC';
-  db.query(sql, [`%${search}%`, `%${search}%`], (err, data) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const offset = (page - 1) * limit;
+
+  const countSql = 'SELECT COUNT(*) as total FROM userdata WHERE nic LIKE ? OR name LIKE ?';
+  db.query(countSql, [`%${search}%`, `%${search}%`], (err, countResults) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(data);
+    const total = countResults[0].total;
+
+    const sql = 'SELECT * FROM userdata WHERE nic LIKE ? OR name LIKE ? ORDER BY next_date ASC LIMIT ? OFFSET ?';
+    db.query(sql, [`%${search}%`, `%${search}%`, limit, offset], (err, data) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        data,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
+    });
   });
 });
 
 // Get user cases (with assignments)
-app.get('/api/getUserCases', (req, res) => {
+app.get('/api/getUserCases', authenticateToken, (req, res) => {
   const sql = `
         SELECT u.*, a.lawyer_name AS assigned_lawyer 
         FROM userdata u
@@ -156,7 +262,7 @@ app.get('/api/getUserCases', (req, res) => {
 });
 
 // Assign lawyer
-app.post('/api/assignLawyer', async (req, res) => {
+app.post('/api/assignLawyer', authenticateToken, async (req, res) => {
   const { nic, lawyer, sendEmail } = req.body;
   if (!nic || !lawyer) return res.json({ status: 'error', message: 'NIC or lawyer missing' });
 
@@ -180,7 +286,7 @@ app.post('/api/assignLawyer', async (req, res) => {
 });
 
 // Add Lawyer
-app.post('/api/addLawyer', (req, res) => {
+app.post('/api/addLawyer', authenticateToken, (req, res) => {
   const { name, nic, email, number, note } = req.body;
   const sql = 'INSERT INTO lawyerdata (name, nic, email, contact, note) VALUES (?, ?, ?, ?, ?)';
   db.query(sql, [name, nic, email, number, note], (err) => {
@@ -189,7 +295,7 @@ app.post('/api/addLawyer', (req, res) => {
   });
 });
 
-app.post('/api/deleteLawyer', (req, res) => {
+app.post('/api/deleteLawyer', authenticateToken, (req, res) => {
   const { nic } = req.body;
   db.query('DELETE FROM lawyerdata WHERE nic = ?', [nic], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
@@ -198,7 +304,7 @@ app.post('/api/deleteLawyer', (req, res) => {
 });
 
 // Add User
-app.post('/api/addUser', (req, res) => {
+app.post('/api/addUser', authenticateToken, (req, res) => {
   const { name, nic, email, number, address, lawyer1, lawyer2, lawyer3, note, ldate, ndate, casetype } = req.body;
   const sql = `
         INSERT INTO userdata (name, nic, email, number, address, lawyer1, lawyer2, lawyer3, note, last_date, next_date, casetype) 
@@ -210,7 +316,7 @@ app.post('/api/addUser', (req, res) => {
   });
 });
 
-app.post('/api/deleteUser', (req, res) => {
+app.post('/api/deleteUser', authenticateToken, (req, res) => {
   const { nic } = req.body;
   db.query('DELETE FROM userdata WHERE nic = ?', [nic], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
@@ -221,7 +327,7 @@ app.post('/api/deleteUser', (req, res) => {
 });
 
 // Update status
-app.post('/api/updateStatus', (req, res) => {
+app.post('/api/updateStatus', authenticateToken, (req, res) => {
   const { nic, status } = req.body;
   const sql = 'UPDATE userdata SET status = ? WHERE nic = ?';
   db.query(sql, [status, nic], (err) => {
@@ -231,14 +337,14 @@ app.post('/api/updateStatus', (req, res) => {
 });
 
 // Todos
-app.get('/api/getTodos', (req, res) => {
+app.get('/api/getTodos', authenticateToken, (req, res) => {
   db.query('SELECT * FROM todo ORDER BY date ASC, time ASC', (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(data);
   });
 });
 
-app.post('/api/addTodo', (req, res) => {
+app.post('/api/addTodo', authenticateToken, (req, res) => {
   const { task, date, time } = req.body;
   db.query('INSERT INTO todo (task, date, time) VALUES (?, ?, ?)', [task, date, time], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
@@ -246,7 +352,7 @@ app.post('/api/addTodo', (req, res) => {
   });
 });
 
-app.post('/api/deleteTodo', (req, res) => {
+app.post('/api/deleteTodo', authenticateToken, (req, res) => {
   const { id } = req.body;
   db.query('DELETE FROM todo WHERE id = ?', [id], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
@@ -255,7 +361,7 @@ app.post('/api/deleteTodo', (req, res) => {
 });
 
 // Stats & Dashboard
-app.get('/api/dashboard_counts', (req, res) => {
+app.get('/api/dashboard_counts', authenticateToken, (req, res) => {
   const sql = `
         SELECT 
             (SELECT COUNT(*) FROM userdata) as totalClients,
@@ -272,7 +378,7 @@ app.get('/api/dashboard_counts', (req, res) => {
   });
 });
 
-app.get('/api/getCaseStats', (req, res) => {
+app.get('/api/getCaseStats', authenticateToken, (req, res) => {
   const sql = 'SELECT casetype AS name, COUNT(*) AS value FROM userdata GROUP BY casetype';
   db.query(sql, (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -284,7 +390,7 @@ app.get('/api/getCaseStats', (req, res) => {
   });
 });
 
-app.get('/api/getReportData', (req, res) => {
+app.get('/api/getReportData', authenticateToken, (req, res) => {
   db.query('SELECT * FROM userdata ORDER BY next_date ASC', (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(data);
@@ -292,23 +398,31 @@ app.get('/api/getReportData', (req, res) => {
 });
 
 // Editors Management
-app.get('/api/getEditors', (req, res) => {
+app.get('/api/getEditors', authenticateToken, (req, res) => {
   db.query('SELECT id, username, permissions FROM editors', (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(data);
   });
 });
 
-app.post('/api/addEditor', (req, res) => {
+app.post('/api/addEditor', async (req, res) => {
   const { username, password, permissions } = req.body;
-  const sql = 'INSERT INTO editors (username, password, permissions) VALUES (?, ?, ?)';
-  db.query(sql, [username, password, JSON.stringify(permissions)], (err) => {
-    if (err) return res.json({ status: 'error', message: err.message });
-    res.json({ status: 'success' });
-  });
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const sql = 'INSERT INTO editors (username, password, permissions) VALUES (?, ?, ?)';
+    db.query(sql, [username, hashedPassword, JSON.stringify(permissions)], (err) => {
+      if (err) return res.json({ status: 'error', message: err.message });
+      res.json({ status: 'success' });
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Error creating editor' });
+  }
 });
 
-app.post('/api/deleteEditor', (req, res) => {
+app.post('/api/deleteEditor', authenticateToken, (req, res) => {
   const { id } = req.body;
   db.query('DELETE FROM editors WHERE id = ?', [id], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
@@ -316,33 +430,112 @@ app.post('/api/deleteEditor', (req, res) => {
   });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
-  if (username === 'admin' && password === '123') {
-    logActivity('admin', 'Login', 'Admin logged into the system');
-    return res.json({
-      status: 'success',
-      user: { username: 'admin', role: 'admin', permissions: ['dashboard', 'lawyers', 'cases', 'assign', 'addlawyer', 'adduser', 'report', 'addeditor'] }
+
+  // Check Admin from .env
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+    const user = {
+      username: process.env.ADMIN_USERNAME,
+      role: 'admin',
+      permissions: ['dashboard', 'lawyers', 'cases', 'assign', 'addlawyer', 'adduser', 'report', 'addeditor']
+    };
+
+    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
+
+    logActivity(user.username, 'Login', 'Admin logged into the system');
+    return res.json({ status: 'success', user });
   }
 
-  const sql = 'SELECT * FROM editors WHERE username = ? AND password = ?';
-  db.query(sql, [username, password], (err, results) => {
+  // Check Editors from DB
+  const sql = 'SELECT * FROM editors WHERE username = ?';
+  db.query(sql, [username], async (err, results) => {
     if (err) return res.status(500).json({ status: 'error', message: err.message });
+
     if (results.length > 0) {
       const user = results[0];
-      logActivity(user.username, 'Login', 'Editor logged into the system');
-      res.json({
-        status: 'success',
-        user: { username: user.username, role: 'editor', permissions: JSON.parse(user.permissions) }
+      const validPassword = await bcrypt.compare(password, user.password);
+
+      if (!validPassword) {
+        return res.json({ status: 'error', message: 'Invalid credentials' });
+      }
+
+      const userData = {
+        username: user.username,
+        role: 'editor',
+        permissions: JSON.parse(user.permissions)
+      };
+
+      const token = jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000
       });
+
+      logActivity(user.username, 'Login', 'Editor logged into the system');
+      res.json({ status: 'success', user: userData });
     } else {
       res.json({ status: 'error', message: 'Invalid credentials' });
     }
   });
 });
 
-app.get('/api/getActivityLogs', (req, res) => {
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ status: 'success', message: 'Logged out successfully' });
+});
+
+app.get('/api/verifyToken', authenticateToken, (req, res) => {
+  res.json({ status: 'success', user: req.user });
+});
+
+app.post('/api/uploadDocument', authenticateToken, upload.single('file'), (req, res) => {
+  const { nic } = req.body;
+  const file = req.file;
+
+  if (!nic || !file) return res.json({ status: 'error', message: 'NIC or file missing' });
+
+  const sql = 'INSERT INTO case_documents (user_nic, file_name, file_path) VALUES (?, ?, ?)';
+  db.query(sql, [nic, file.originalname, `/uploads/${file.filename}`], (err) => {
+    if (err) return res.json({ status: 'error', message: err.message });
+    res.json({ status: 'success', message: 'Document uploaded successfully' });
+  });
+});
+
+app.get('/api/getDocuments/:nic', authenticateToken, (req, res) => {
+  const { nic } = req.params;
+  const sql = 'SELECT * FROM case_documents WHERE user_nic = ?';
+  db.query(sql, [nic], (err, data) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(data);
+  });
+});
+
+app.post('/api/deleteDocument', authenticateToken, (req, res) => {
+  const { id, path: filePath } = req.body;
+  const sql = 'DELETE FROM case_documents WHERE id = ?';
+  db.query(sql, [id], (err) => {
+    if (err) return res.json({ status: 'error', message: err.message });
+
+    // Optional: Delete physical file
+    const fullPath = path.join(__dirname, '../../', filePath);
+    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+
+    res.json({ status: 'success' });
+  });
+});
+
+app.get('/api/getActivityLogs', authenticateToken, (req, res) => {
   const sql = "SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT 500";
   db.query(sql, (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -350,7 +543,7 @@ app.get('/api/getActivityLogs', (req, res) => {
   });
 });
 
-app.post('/api/logAction', (req, res) => {
+app.post('/api/logAction', authenticateToken, (req, res) => {
   const { username, action, details } = req.body;
   logActivity(username, action, details);
   res.json({ status: 'success' });

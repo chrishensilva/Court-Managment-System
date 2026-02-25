@@ -7,16 +7,22 @@ import { useToast } from "./ToastContext";
 function Lawyers() {
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10;
   const { user, logAction } = useAuth();
   const { toast, confirm } = useToast();
 
   // Load data
   const loadData = () => {
-    fetch(`${API_BASE_URL}/getLawyers?search=${search}`)
+    fetch(`${API_BASE_URL}/getLawyers?search=${search}&page=${page}&limit=${limit}`, {
+      credentials: 'include'
+    })
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) {
-          setData(data);
+        if (data && Array.isArray(data.data)) {
+          setData(data.data);
+          setTotalPages(data.pagination.totalPages);
         } else {
           setData([]);
         }
@@ -29,7 +35,7 @@ function Lawyers() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page]); // Reload when page changes
 
   // Delete lawyer
   const deleteLawyer = async (nic) => {
@@ -43,6 +49,7 @@ function Lawyers() {
     fetch(`${API_BASE_URL}/deleteLawyer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: 'include',
       body: JSON.stringify({ nic }),
     })
       .then((res) => res.json())
@@ -108,6 +115,26 @@ function Lawyers() {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+            className="btn1"
+          >
+            Previous
+          </button>
+          <span>Page {page} of {totalPages}</span>
+          <button
+            disabled={page === totalPages}
+            onClick={() => setPage(page + 1)}
+            className="btn1"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
