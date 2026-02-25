@@ -359,11 +359,11 @@ app.post('/api/logAction', (req, res) => {
 // Catch-all: serve React app for any non-API route (SPA support)
 if (isProduction) {
   const distPath = path.join(__dirname, '../../dist');
-  app.get('/{*path}', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
 app.listen(port, '0.0.0.0', () => {
-  console.log(`MySQL API Server running at http://0.0.0.0:${port}`);
+  console.log(`Server running on port ${port}`);
 });
