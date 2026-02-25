@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import "./Form.css";
+import API_BASE_URL from "./config";
+import { useAuth } from "./AuthContext";
 
 function AddUser({ onSuccess }) {
   const [lawyers, setLawyers] = useState([]);
+  const { hasPermission, logAction } = useAuth();
 
   // Fetch lawyers list
   useEffect(() => {
-    fetch("http://localhost/api/getLawyers.php")
+    fetch(`${API_BASE_URL}/getLawyers`)
       .then((res) => res.json())
       .then((data) => setLawyers(data))
       .catch((err) => console.error(err));
@@ -14,16 +17,30 @@ function AddUser({ onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
 
-    await fetch("http://localhost/api/addUser.php", {
+    if (!hasPermission('adduser')) {
+      alert("You do not have permission to add cases.");
+      return;
+    }
+
+    const formData = new FormData(e.target);
+    const dataObj = Object.fromEntries(formData.entries());
+
+    const res = await fetch(`${API_BASE_URL}/addUser`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dataObj),
     });
+
+    const data = await res.json();
+    if (data.status === "success") {
+      logAction("Insert Case", `Added case: ${dataObj.name} (Number: ${dataObj.nic})`);
+    }
 
     e.target.reset();
     onSuccess && onSuccess();
   };
+
 
   return (
     <div className="container" id="adduser">
@@ -33,7 +50,7 @@ function AddUser({ onSuccess }) {
         <label htmlFor="name">Name</label>
         <input type="text" className="field" name="name" required />
 
-        <label htmlFor="nic">NIC Number</label>
+        <label htmlFor="nic">Case Number</label>
         <input type="text" className="field" name="nic" required />
 
         <label htmlFor="email">Email</label>
@@ -86,12 +103,15 @@ function AddUser({ onSuccess }) {
 
         <label>Case Type</label>
         <select className="field2" name="casetype" required>
-          <option value="">Select Case Type</option>
-          <option value="criminal">Criminal</option>
-          <option value="civil">Civil</option>
-          <option value="family">Family</option>
-          <option value="corporate">Corporate</option>
-          <option value="property">Property</option>
+          <option value="">Select Court Type</option>
+          <option value="Supreme Court">Supreme Court</option>
+          <option value="Court of Appeal">Court of Appeal</option>
+          <option value="Civil HC">Civil HC</option>
+          <option value="Commercial HC">Commercial HC</option>
+          <option value="District Court">District Court</option>
+          <option value="Magistrate Court">Magistrate Court</option>
+          <option value="Labour Tribunal">Labour Tribunal</option>
+          <option value="Other">Other</option>
         </select>
 
         <div className="btnset">

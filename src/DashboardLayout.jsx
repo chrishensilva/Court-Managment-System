@@ -1,20 +1,30 @@
+import { useState } from "react";
 import Sidebar from "./Sidebar";
 import { Outlet } from "react-router-dom";
 import "./Dashboard.css";
-import icon from "./assets/icon.png";
+import icon from "./assets/icon2.png";
 
 function DashboardLayout() {
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
+
   return (
-    <div className="dashboard-container">
+    <div className={`dashboard-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
       <div className="top-nav">
-        <img src={icon} alt="App Icon" className="app-icon" />
-        <h2>Case Management System</h2>
+        <div className="nav-left">
+          <button className="menu-toggle" onClick={toggleSidebar} aria-label="Toggle Menu">
+            ☰
+          </button>
+          <img src={icon} alt="App Icon" className="app-icon" />
+          <h2 className="nav-title">Case Management System</h2>
+        </div>
       </div>
 
       <div className="body-wrapper">
-        <Sidebar />
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <div className="main-body">
+        <div className="main-body" onClick={() => isSidebarOpen && setSidebarOpen(false)}>
           <Outlet />
         </div>
       </div>

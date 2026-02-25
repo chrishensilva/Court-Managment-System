@@ -1,14 +1,28 @@
 import { useEffect, useState } from "react";
 import "./Table.css";
+import API_BASE_URL from "./config";
+import { useAuth } from "./AuthContext";
+
 function Lawyers() {
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
+  const { user, logAction } = useAuth();
 
   // Load data
   const loadData = () => {
-    fetch(`http://localhost/api/getLawyers.php?search=${search}`)
+    fetch(`${API_BASE_URL}/getLawyers?search=${search}`)
       .then((res) => res.json())
-      .then((data) => setData(data));
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setData(data);
+        } else {
+          setData([]);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setData([]);
+      });
   };
 
   useEffect(() => {
@@ -17,19 +31,29 @@ function Lawyers() {
 
   // Delete lawyer
   const deleteLawyer = (nic) => {
+    if (user?.role !== 'admin') {
+      alert("Only admins can delete lawyers.");
+      return;
+    }
     if (!window.confirm("Delete this lawyer?")) return;
 
-    fetch(`http://localhost/api/deleteLawyer.php?nic=${nic}`)
-      .then((res) => res.text())
-      .then((msg) => {
-        if (msg === "success") {
+    fetch(`${API_BASE_URL}/deleteLawyer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nic }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          logAction("Delete Lawyer", `Deleted lawyer with NIC: ${nic}`);
           loadData();
         }
       });
   };
 
+
   return (
-    <div className="lawyers-page">
+    <div className="lawyers-page fade-in">
       <h2>Lawyers</h2>
 
       {/* Search */}
@@ -45,37 +69,40 @@ function Lawyers() {
       </button>
 
       {/* Table */}
-      <table className="styled-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>NIC</th>
-            <th>Email</th>
-            <th>Contact</th>
-            <th>Note</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row) => (
-            <tr key={row.nic}>
-              <td>{row.name}</td>
-              <td>{row.nic}</td>
-              <td>{row.email}</td>
-              <td>{row.contact}</td>
-              <td>{row.note}</td>
-              <td>
-                <button
-                  className="delete-btn"
-                  onClick={() => deleteLawyer(row.nic)}
-                >
-                  Delete
-                </button>
-              </td>
+      <div className="table-container">
+        <table className="styled-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>NIC</th>
+              <th>Email</th>
+              <th>Contact</th>
+              <th>Note</th>
+              <th>Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Array.isArray(data) && data.map((row) => (
+              <tr key={row.nic}>
+                <td>{row.name}</td>
+                <td>{row.nic}</td>
+                <td>{row.email}</td>
+                <td>{row.contact}</td>
+                <td>{row.note}</td>
+                <td>
+                  <button
+                    className="delete-btn"
+                    onClick={() => deleteLawyer(row.nic)}
+                    style={{ opacity: user?.role === 'admin' ? 1 : 0.5, cursor: user?.role === 'admin' ? 'pointer' : 'not-allowed' }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

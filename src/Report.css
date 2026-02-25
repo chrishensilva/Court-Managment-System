@@ -1,0 +1,160 @@
+/* Report Page Specific Styles */
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.report-header h2 {
+    margin: 0;
+}
+
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Report Summary Cards */
+.report-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+}
+
+.summary-card h4 {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.summary-number {
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+/* Card Variants */
+.total-card h4 {
+    color: var(--primary);
+}
+
+.total-card .summary-number {
+    color: var(--primary);
+}
+
+.total-card {
+    border-top: 4px solid var(--primary);
+}
+
+.assigned-card h4 {
+    color: var(--success);
+}
+
+.assigned-card .summary-number {
+    color: var(--success);
+}
+
+.assigned-card {
+    border-top: 4px solid var(--success);
+}
+
+.unassigned-card h4 {
+    color: var(--warning);
+}
+
+.unassigned-card .summary-number {
+    color: var(--warning);
+}
+
+.unassigned-card {
+    border-top: 4px solid var(--warning);
+}
+
+.upcoming-card h4 {
+    color: var(--danger);
+}
+
+.upcoming-card .summary-number {
+    color: var(--danger);
+}
+
+.upcoming-card {
+    border-top: 4px solid var(--danger);
+}
+
+/* Table Status Indicators */
+.assigned {
+    background: #f0fdf4;
+    color: var(--success);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.unassigned {
+    background: #fffbeb;
+    color: var(--warning);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Print Styles */
+@media print {
+    .report-header {
+        margin-bottom: 1rem;
+    }
+
+    .report-actions,
+    .sidebar-body,
+    .top-nav,
+    .btn1 {
+        display: none !important;
+    }
+
+    .main-body {
+        padding: 1rem !important;
+    }
+
+    .styled-table {
+        font-size: 0.75rem;
+    }
+
+    .styled-table th,
+    .styled-table td {
+        padding: 0.5rem;
+    }
+
+    .summary-card {
+        break-inside: avoid;
+    }
+}

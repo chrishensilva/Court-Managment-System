@@ -1,40 +1,63 @@
 import { useEffect, useState } from "react";
+import LoadingModal from "./LoadingModal";
+import API_BASE_URL from "./config";
+import { useAuth } from "./AuthContext";
 
 function Cases() {
   const [users, setUsers] = useState([]);
   const [lawyers, setLawyers] = useState([]);
+  const { user, hasPermission, logAction } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [loadingSubMessage, setLoadingSubMessage] = useState("");
 
   // Load lawyers
   const loadLawyers = async () => {
-    const res = await fetch("http://localhost/api/getLawyers.php");
+    const res = await fetch(`${API_BASE_URL}/getLawyers`);
     const data = await res.json();
     setLawyers(data);
   };
 
   // Load users with cases
   const loadUsers = async () => {
-    const res = await fetch("http://localhost/api/getUserCases.php");
+    const res = await fetch(`${API_BASE_URL}/getUserCases`);
     const data = await res.json();
     setUsers(data);
   };
 
   // Assign lawyer
   const assignLawyer = async (nic, lawyer) => {
+    if (!hasPermission('assign')) {
+      alert("You do not have permission to assign lawyers.");
+      return;
+    }
+    if (!lawyer) return; // Don't proceed if no lawyer selected
+
     const sendEmail = window.confirm("Send email to lawyer?");
 
+    // Show loading modal
+    setLoading(true);
+    setLoadingMessage("Assigning Lawyer");
+    setLoadingSubMessage(sendEmail ? "Sending email notification..." : "Updating case assignment...");
+
     try {
-      const res = await fetch("http://localhost/api/assignLawyer.php", {
+      const res = await fetch(`${API_BASE_URL}/assignLawyer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nic, lawyer, sendEmail }),
       });
+
 
       const text = await res.text();
       console.log("RAW RESPONSE:", text);
 
       const data = JSON.parse(text);
 
+      // Hide loading
+      setLoading(false);
+
       if (data.status === "success") {
+        logAction("Assign Lawyer", `Assigned ${lawyer} to case ${nic}`);
         alert(data.message || "Lawyer assigned successfully");
         loadUsers();
       } else {
@@ -42,7 +65,32 @@ function Cases() {
       }
     } catch (err) {
       console.error("Assign lawyer failed:", err);
+      setLoading(false);
       alert("Assign lawyer failed. Check console.");
+    }
+  };
+
+  // Update status
+  const updateStatus = async (nic, status) => {
+    if (!hasPermission('cases')) {
+      alert("You do not have permission to update status.");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/updateStatus`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nic, status }),
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        logAction("Update Status", `Updated status of case ${nic} to ${status}`);
+        loadUsers();
+      } else {
+        alert("Failed to update status");
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -51,56 +99,91 @@ function Cases() {
     loadUsers();
   }, []);
 
+  const getRowColor = (status) => {
+    switch (status) {
+      case "concluded": return "#d4edda"; // Light Green
+      case "ongoing": return "#fff3cd"; // Light Orange/Yellow
+      case "other": return "#e2e3e5"; // Light Gray
+      default: return "";
+    }
+  };
+
   return (
-    <div className="main-container">
-      <h2>Assign Lawyers to Cases</h2>
-      <table className="styled-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>NIC</th>
-            <th>Email</th>
-            <th>Contact</th>
-            <th>Address</th>
-            <th>Last Court Date</th>
-            <th>Next Court Date</th>
-            <th>Case</th>
-            <th>Lawyers</th>
-            <th>Note</th>
-            <th>Assign Lawyer</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.nic}>
-              <td>{u.name}</td>
-              <td>{u.nic}</td>
-              <td>{u.email}</td>
-              <td>{u.number}</td>
-              <td>{u.address}</td>
-              <td>{u.last_date}</td>
-              <td>{u.next_date}</td>
-              <td>{u.casetype}</td>
-              <td>{u.lawyer1}</td>
-              <td>{u.note}</td>
-              <td>
-                <select
-                  defaultValue={u.lawyer_name || ""}
-                  onChange={(e) => assignLawyer(u.nic, e.target.value)}
-                >
-                  <option value="">Select</option>
-                  {lawyers.map((l) => (
-                    <option key={l.name} value={l.name}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {loading && (
+        <LoadingModal
+          message={loadingMessage}
+          subMessage={loadingSubMessage}
+        />
+      )}
+
+      <div className="main-container fade-in">
+        <h2>Assign Lawyers to Cases</h2>
+        <div className="table-container">
+          <table className="styled-table">
+            <thead>
+              {/* ... (headers remain the same) */}
+              <tr>
+                <th>Name</th>
+                <th>Case Number</th>
+                <th>Email</th>
+                <th>Contact</th>
+                <th>Address</th>
+                <th>Last Court Date</th>
+                <th>Next Court Date</th>
+                <th>Court Type</th>
+                <th>Lawyers</th>
+                <th>Status</th>
+                <th>Note</th>
+                <th>Assign Lawyer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u.nic} style={{ backgroundColor: getRowColor(u.status) }}>
+                  <td>{u.name}</td>
+                  <td>{u.nic}</td>
+                  <td>{u.email}</td>
+                  <td>{u.number}</td>
+                  <td>{u.address}</td>
+                  <td>{u.last_date}</td>
+                  <td>{u.next_date}</td>
+                  <td>{u.casetype}</td>
+                  <td>{u.lawyer1}</td>
+                  <td>
+                    <select
+                      value={u.status || "ongoing"}
+                      onChange={(e) => updateStatus(u.nic, e.target.value)}
+                      disabled={!hasPermission('cases')}
+                      style={{ backgroundColor: 'transparent', border: '1px solid #ccc', borderRadius: '4px' }}
+                    >
+                      <option value="ongoing">Ongoing</option>
+                      <option value="concluded">Concluded</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </td>
+                  <td>{u.note}</td>
+                  <td>
+                    <select
+                      defaultValue={u.lawyer_name || ""}
+                      onChange={(e) => assignLawyer(u.nic, e.target.value)}
+                      disabled={!hasPermission('assign')}
+                    >
+                      <option value="">Select</option>
+                      {lawyers.map((l) => (
+                        <option key={l.name} value={l.name}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }
 

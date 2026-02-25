@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "./DashboardLayout";
 import Lawyers from "./Lawyers";
 import DashboardPage from "./DashboardPage";
@@ -6,6 +6,9 @@ import UserPage from "./UserPage";
 import Cases from "./Cases";
 import AddUser from "./AddUser";
 import AddLawyer from "./AddLawyer";
+import GenerateReport from "./GenerateReport";
+import AddEditor from "./AddEditor";
+import ActivityLogs from "./ActivityLogs";
 import Login from "./Login";
 import { useAuth } from "./AuthContext";
 
@@ -16,7 +19,7 @@ function ProtectedRoute({ children }) {
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Login Route */}
         <Route path="/login" element={<Login />} />
@@ -36,9 +39,12 @@ function App() {
           <Route path="cases" element={<Cases />} />
           <Route path="adduser" element={<AddUser />} />
           <Route path="addlawyer" element={<AddLawyer />} />
+          <Route path="report" element={<GenerateReport />} />
+          <Route path="addeditor" element={<AddEditor />} />
+          <Route path="logs" element={<ActivityLogs />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

@@ -1,56 +1,128 @@
+/* Sidebar Container */
 .sidebar-body {
-  width: 10%;
-  padding: 30px;
-  background-color: #ffffff; /* Clean white background */
-  border-right: 1px solid #ffffff; /* Subtle border to define the sidebar */
-  /* Optional: smoothing out the layout */
-  box-shadow: 1px 0 10px rgba(155, 81, 224, 0.2);
+  width: 260px;
+  min-width: 260px;
+  height: calc(100vh - 4rem);
+  padding: 1.5rem;
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-normal);
+  z-index: 40;
 }
 
+.sidebar-close {
+  display: none;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  font-size: 2rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .sidebar-body {
+    position: fixed;
+    top: 4rem;
+    left: 0;
+    height: calc(100vh - 4rem);
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .sidebar-body.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-close {
+    display: block;
+  }
+}
+
+/* Nav Items */
 .sidebar-body h3 {
-  margin-left: 1%;
-  margin-bottom: 20%;
-  padding: 10px; /* Adjusted padding for better click targets */
-  color: #37474f; /* Dark gray text for readability */
-  transition: all 0.2s ease-in-out;
-  border-radius: 8px;
+  margin: 0;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
 }
 
 .sidebar-body h3:hover {
-  cursor: pointer;
-  background-color: #f5f5f5; /* Light gray hover effect */
-  color: #000000;
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
 .sidebar-body h3.active {
-  background-color: #eeeeee; /* Slightly darker gray for active state */
-  color: #1976d2; /* Optional: A pop of blue to show it's "selected" */
+  background-color: var(--primary);
+  color: white;
   font-weight: 600;
+  box-shadow: var(--shadow-md);
 }
+
 .sidebar-icon {
   width: 20px;
   height: 20px;
-  margin-right: 10px; /* Space between icon and text */
-  vertical-align: middle; /* Aligns the icon with the text */
+  margin-right: 0.75rem;
+  opacity: 0.8;
 }
+
+.sidebar-body h3.active .sidebar-icon {
+  opacity: 1;
+}
+
+/* Logout Section */
 .sidebar-logout {
-  padding-top: 20px;
-  border-top: 1px solid #eeeeee; /* Lighter divider for the light theme */
+  margin-top: auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
 }
 
 .logout-btn {
   width: 100%;
-  padding: 10px;
-  background-color: #e63946; /* Soft red tint */
-  color: #fff; /* Deep red text */
-  font-weight: 500;
-  border: 1px solid #f5c6cb;
-  border-radius: 6px;
+  padding: 0.75rem;
+  background-color: transparent;
+  color: var(--danger);
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: 0.3s;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .logout-btn:hover {
-  background-color: #c62828; /* Becomes solid red on hover */
-  color: #fff;
+  background-color: var(--danger);
+  color: white;
+  border-color: var(--danger);
+  box-shadow: var(--shadow-md);
+}
+
+
+/* Sidebar Footer */
+.sidebar-body footer {
+  margin-top: 10rem;
+  padding-top: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  width: 100%;
+}
+
+.sidebar-body footer p {
+  margin-top: -10rem;
 }

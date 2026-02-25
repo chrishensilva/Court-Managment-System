@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./Todo.css";
+import API_BASE_URL from "./config";
 
 export default function TodoApp() {
   const [task, setTask] = useState("");
@@ -10,40 +11,63 @@ export default function TodoApp() {
   const addTodo = async () => {
     if (!task || !date || !time) return;
 
-    const res = await fetch("http://localhost:5000/todos", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ task, date, time }),
-    });
+    try {
+      const res = await fetch(`${API_BASE_URL}/addTodo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ task, date, time }),
+      });
 
-    const newTodo = await res.json();
-    setTodos([newTodo, ...todos]);
-
-    setTask("");
-    setDate("");
-    setTime("");
+      const result = await res.json();
+      if (result.status === "success") {
+        const newTodo = { id: result.id, task, date, time };
+        setTodos([newTodo, ...todos]);
+        setTask("");
+        setDate("");
+        setTime("");
+      }
+    } catch (err) {
+      console.error("Error adding todo:", err);
+    }
   };
 
   const deleteTodo = async (id) => {
-    await fetch(`http://localhost:5000/todos/${id}`, {
-      method: "DELETE",
-    });
-
-    setTodos(todos.filter((item) => item.id !== id));
+    try {
+      const res = await fetch(`${API_BASE_URL}/deleteTodo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+      const result = await res.json();
+      if (result.status === "success") {
+        setTodos(todos.filter((item) => item.id !== id));
+      }
+    } catch (err) {
+      console.error("Error deleting todo:", err);
+    }
   };
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return "";
     const date = new Date(dateStr);
     return date.toISOString().split("T")[0];
   };
 
   useEffect(() => {
-    fetch("http://localhost:5000/todos")
+    fetch(`${API_BASE_URL}/getTodos`)
       .then((res) => res.json())
-      .then((data) => setTodos(data));
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setTodos(data);
+        }
+      })
+      .catch(err => console.error("Error fetching todos:", err));
   }, []);
+
 
   return (
     <div className="todo-box">

@@ -1,62 +1,140 @@
+/* --- Todo Widget --- */
 .todo-box {
-  width: 50 0px;
-  padding: 20px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  height: 100%;
+  padding: 1.5rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
 }
 
+.todo-box h3 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  color: var(--text-main);
+}
+
+/* --- Task List --- */
 .task-list {
   flex: 1;
-  overflow-y: auto; /* Scrollbar */
-  margin-top: 15px;
-  max-height: 100%;
-  padding-right: 5px; /* Fix scrollbar overlap */
+  overflow-y: auto;
+  margin-top: 1rem;
+  padding-right: 0.5rem;
+  /* Space for scrollbar */
 }
 
+/* Custom Scrollbar */
 .task-list::-webkit-scrollbar {
   width: 6px;
 }
 
 .task-list::-webkit-scrollbar-thumb {
-  background: #bbb;
-  border-radius: 10px;
+  background: var(--border);
+  border-radius: var(--radius-full);
 }
 
-.input-area {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.task-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
-input,
-button {
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-
-button {
-  background: #111;
-  color: #fff;
-  cursor: pointer;
-}
-
+/* --- List Items --- */
 li {
   display: flex;
   justify-content: space-between;
-  padding: 10px;
-  background: #f7f7f7;
-  border-radius: 6px;
-  margin-bottom: 10px;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-main);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  transition: all var(--transition-fast);
 }
 
+li:hover {
+  background: var(--bg-surface);
+  border-color: var(--primary);
+  transform: translateX(2px);
+  box-shadow: var(--shadow-sm);
+}
+
+li span {
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+/* --- Delete Button --- */
 .delete-btn {
-  background: red;
-  color: white;
+  background: transparent;
+  color: var(--text-muted);
   border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-btn:hover {
+  background: #fef2f2;
+  color: var(--danger);
+}
+
+/* --- Input Area --- */
+.input-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.input-area input {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-main);
+  outline: none;
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+}
+
+.input-area input[type="text"] {
+  flex: 1 1 100%;
+  /* Takes full width */
+}
+
+.input-area input[type="date"],
+.input-area input[type="time"] {
+  flex: 1;
+  /* Share remaining space */
+}
+
+.input-area input:focus {
+  border-color: var(--primary);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.input-area button {
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex: 0 0 auto;
+}
+
+.input-area button:hover {
+  background: var(--primary-hover);
+  box-shadow: var(--shadow-sm);
 }

@@ -1,8 +1,15 @@
 import mysql from "mysql2";
+import dotenv from "dotenv";
 
-export const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "userdb",
+dotenv.config();
+
+export const db = mysql.createPool({
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "userdb",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
+

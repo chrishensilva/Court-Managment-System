@@ -4,6 +4,7 @@ import CaseTypeChart from "./CaseTypeChart";
 import client from "./assets/client.png";
 import lawyer from "./assets/lawyer.png";
 import caseicon from "./assets/case.png";
+import API_BASE_URL from "./config";
 
 function DashboardPage() {
   const [counts, setCounts] = useState({
@@ -13,13 +14,14 @@ function DashboardPage() {
   });
 
   useEffect(() => {
-    fetch("http://localhost/api/dashboard_counts.php")
+    fetch(`${API_BASE_URL}/dashboard_counts`)
       .then((res) => res.json())
       .then((data) => {
         setCounts(data);
       })
       .catch((err) => console.error("Error fetching dashboard counts:", err));
   }, []);
+
 
   return (
     <>

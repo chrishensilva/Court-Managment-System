@@ -1,19 +1,30 @@
 import "./Form.css";
+import API_BASE_URL from "./config";
+import { useAuth } from "./AuthContext";
 
 function AddLawyer() {
+  const { hasPermission, logAction } = useAuth();
   const handleSubmit = (e) => {
     e.preventDefault(); // 🚫 stop page reload
 
-    const formData = new FormData(e.target);
+    if (!hasPermission('addlawyer')) {
+      alert("You do not have permission to add lawyers.");
+      return;
+    }
 
-    fetch("http://localhost/api/addLawyer.php", {
+    const formData = new FormData(e.target);
+    const dataObj = Object.fromEntries(formData.entries());
+
+    fetch(`${API_BASE_URL}/addLawyer`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dataObj),
     })
       .then((res) => res.json())
       .then((data) => {
         if (data.status === "success") {
-          alert(data.message); // ✅ SUCCESS ALERT
+          logAction("Insert Lawyer", `Added lawyer: ${dataObj.name} (NIC: ${dataObj.nic})`);
+          alert(data.message || "Lawyer added successfully"); // ✅ SUCCESS ALERT
           e.target.reset();
         } else {
           alert("Error: " + data.message);

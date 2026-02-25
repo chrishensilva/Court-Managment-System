@@ -1,125 +1,145 @@
-/* --- Container --- */
 .container {
-  width: 420px;
-  padding: 40px 35px;
-  background: #ffffff;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  width: 95%;
+  max-width: 500px;
+  margin: 1.5rem auto;
+  padding: 2rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  margin-left: 30%;
-  animation: fadeIn 0.4s ease;
+  animation: fadeIn 0.4s ease-out;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 1.5rem;
+    margin: 1rem auto;
+  }
 }
 
 /* --- Heading --- */
 .container h2 {
-  margin-bottom: 25px;
-  font-size: 22px;
-  color: #1a1a1a;
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  color: var(--text-main);
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* --- Labels --- */
 label {
   display: block;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
-  margin-bottom: 6px;
-  color: #333;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
 }
 
 /* --- Input Fields --- */
-.field {
-  width: 100%;
-  padding: 12px 14px;
-  border: 2px solid #d3d3d3;
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-  margin-bottom: 3%;
-  transition: all 0.25s ease;
-  background: #fafafa;
-}
+.field,
 .field2 {
   width: 100%;
-  padding: 12px 14px;
-  border: 2px solid #d3d3d3;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
   outline: none;
-  margin-bottom: 3%;
-  transition: all 0.25s ease;
-  background: #fafafa;
+  margin-bottom: 1.5rem;
+  transition: all var(--transition-fast);
+  background: var(--bg-main);
+  /* Slight contrast */
+  color: var(--text-main);
 }
-.field:focus {
-  border-color: #4a74f5;
-  box-shadow: 0 0 6px rgba(74, 116, 245, 0.3);
-  background: white;
+
+.field:focus,
+.field2:focus {
+  border-color: var(--primary);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  /* Primary color ring */
+}
+
+.field::placeholder,
+.field2::placeholder {
+  color: var(--text-muted);
 }
 
 /* --- Textarea --- */
 textarea.field {
   resize: vertical;
-  min-height: 90px;
+  min-height: 120px;
 }
 
 /* --- Buttons --- */
 .btnset {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.submit,
+.goback {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+  min-width: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .submit {
-  padding: 14px 20px;
-  border: none;
-  background: #4a74f5;
-  color: #fff;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
-  transition: 0.25s ease;
+  background: var(--primary);
+  color: white;
+  box-shadow: var(--shadow-sm);
 }
 
 .submit:hover {
-  background: #335be0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(74, 116, 245, 0.4);
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-/* --- Optional Go Back Button --- */
 .goback {
-  padding: 14px 20px;
-  background: #ffffff;
-  color: #4a74f5;
-  border: 2px solid #4a74f5;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: 0.25s ease;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 .goback:hover {
-  background: #4a74f5;
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(74, 116, 245, 0.4);
+  background: var(--bg-main);
+  color: var(--text-main);
+  border-color: var(--text-secondary);
 }
+
+/* Specific button overrides if IDs are used */
 #addlawyer {
-  background-color: #01881e;
+  background-color: var(--success);
 }
+
+#addlawyer:hover {
+  background-color: #059669;
+  /* Emerald 600 */
+}
+
 #adduser {
-  background-color: blue;
+  background-color: var(--primary);
 }
+
 /* --- Animation --- */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
