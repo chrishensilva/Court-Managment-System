@@ -41,7 +41,9 @@ function Cases() {
       "primary"
     );
 
-    // Show loading modal
+    // If user cancelled the dialog, abort the assignment entirely
+    if (sendEmail === false) return;
+
     setLoading(true);
     setLoadingMessage("Assigning Lawyer");
     setLoadingSubMessage(sendEmail ? "Sending email notification..." : "Updating case assignment...");
