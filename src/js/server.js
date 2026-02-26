@@ -10,6 +10,7 @@ import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
+import crypto from "crypto";
 import { db } from "./db.js";
 
 dotenv.config();
@@ -20,6 +21,35 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Encryption configuration
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef'; // Must be 32 chars
+const IV_LENGTH = 16;
+
+function encrypt(text) {
+  if (!text) return null;
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decrypt(text) {
+  if (!text) return null;
+  try {
+    const textParts = text.split(':');
+    const iv = Buffer.from(textParts.shift(), 'hex');
+    const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch (err) {
+    console.error("Decryption failed:", err);
+    return null;
+  }
+}
 
 app.use(cors({
   origin: process.env.VITE_FRONTEND_URL || 'http://localhost:5173',
@@ -110,16 +140,84 @@ const initMySQL = () => {
   db.query(createDocsTable, (err) => {
     if (err) console.error("Error creating docs table:", err);
   });
+
+  // Create user_profiles table
+  const createProfilesTable = `
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            username VARCHAR(255) PRIMARY KEY,
+            fullname VARCHAR(255),
+            email VARCHAR(255),
+            phone VARCHAR(20),
+            avatar_url LONGTEXT,
+            notifications JSON,
+            language VARCHAR(20) DEFAULT 'English'
+        )
+    `;
+  db.query(createProfilesTable, (err) => {
+    if (err) console.error("Error creating profiles table:", err);
+    // Ensure avatar_url column supports large Base64 strings
+    db.query('ALTER TABLE user_profiles MODIFY avatar_url LONGTEXT', (err) => {
+      if (err && !err.message.includes('Unknown column')) { /* ignore if already correct */ }
+    });
+  });
+
+  // Create app_settings table (for SMTP and other global configs)
+  const createSettingsTable = `
+        CREATE TABLE IF NOT EXISTS app_settings (
+            setting_key VARCHAR(255) PRIMARY KEY,
+            setting_value TEXT,
+            is_encrypted BOOLEAN DEFAULT FALSE
+        )
+    `;
+  db.query(createSettingsTable, (err) => {
+    if (err) console.error("Error creating settings table:", err);
+  });
+
+  // Create login_history table
+  const createLoginHistoryTable = `
+        CREATE TABLE IF NOT EXISTS login_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ip_address VARCHAR(45),
+            device_type TEXT
+        )
+    `;
+  db.query(createLoginHistoryTable, (err) => {
+    if (err) console.error("Error creating login history table:", err);
+  });
+
+  // Create subscription table
+  const createSubscriptionTable = `
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            plan_name VARCHAR(255) DEFAULT 'Professional',
+            renewal_date DATE,
+            status VARCHAR(50) DEFAULT 'Active'
+        )
+    `;
+  db.query(createSubscriptionTable, (err) => {
+    if (err) console.error("Error creating subscription table:", err);
+  });
 };
 
 initMySQL();
 
 // --- HELPER: Log Activity ---
-const logActivity = (username, action, details = "") => {
+const logActivity = (username, action, details = "", req = null) => {
   const sql = "INSERT INTO activity_log (username, action, details) VALUES (?, ?, ?)";
   db.query(sql, [username, action, details], (err) => {
     if (err) console.error("Logging failed:", err);
   });
+
+  if (action === 'Login' && req) {
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const device = req.headers['user-agent'];
+    const historySql = "INSERT INTO login_history (username, ip_address, device_type) VALUES (?, ?, ?)";
+    db.query(historySql, [username, ip, device], (err) => {
+      if (err) console.error("Login history logging failed:", err);
+    });
+  }
 };
 
 // --- Email Transporter ---
@@ -179,10 +277,23 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'), false);
+      cb(new Error('Only PDF and Image files are allowed'), false);
+    }
+  }
+});
+
+// Memory-based multer for avatar uploads (stored as Base64 in database)
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max for profile pictures
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed for avatars'), false);
     }
   }
 });
@@ -450,7 +561,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
 
-    logActivity(user.username, 'Login', 'Admin logged into the system');
+    logActivity(user.username, 'Login', 'Admin logged into the system', req);
     return res.json({ status: 'success', user });
   }
 
@@ -482,7 +593,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000
       });
 
-      logActivity(user.username, 'Login', 'Editor logged into the system');
+      logActivity(user.username, 'Login', 'Editor logged into the system', req);
       res.json({ status: 'success', user: userData });
     } else {
       res.json({ status: 'error', message: 'Invalid credentials' });
@@ -536,7 +647,12 @@ app.post('/api/deleteDocument', authenticateToken, (req, res) => {
 });
 
 app.get('/api/getActivityLogs', authenticateToken, (req, res) => {
-  const sql = "SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT 500";
+  const sql = `
+    SELECT l.*, p.avatar_url 
+    FROM activity_log l 
+    LEFT JOIN user_profiles p ON l.username = p.username 
+    ORDER BY l.timestamp DESC LIMIT 500
+  `;
   db.query(sql, (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(data);
@@ -547,6 +663,210 @@ app.post('/api/logAction', authenticateToken, (req, res) => {
   const { username, action, details } = req.body;
   logActivity(username, action, details);
   res.json({ status: 'success' });
+});
+
+// --- ACCOUNT MANAGEMENT ROUTES ---
+
+// Get Profile
+app.get('/api/getProfile', authenticateToken, (req, res) => {
+  const sql = 'SELECT * FROM user_profiles WHERE username = ?';
+  db.query(sql, [req.user.username], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length > 0) {
+      res.json(results[0]);
+    } else {
+      // Return default profile if not exists
+      res.json({
+        username: req.user.username,
+        fullname: '',
+        email: '',
+        phone: '',
+        avatar_url: null,
+        notifications: JSON.stringify({ caseAssigned: true, reminder: true }),
+        language: 'English'
+      });
+    }
+  });
+});
+
+// Update Profile
+app.post('/api/updateProfile', authenticateToken, (req, res) => {
+  const { fullname, email, phone, avatar_url } = req.body;
+  const sql = `
+    INSERT INTO user_profiles (username, fullname, email, phone, avatar_url) 
+    VALUES (?, ?, ?, ?, ?) 
+    ON DUPLICATE KEY UPDATE fullname = VALUES(fullname), email = VALUES(email), phone = VALUES(phone), avatar_url = VALUES(avatar_url)
+  `;
+  db.query(sql, [req.user.username, fullname, email, phone, avatar_url], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    logActivity(req.user.username, 'Profile Update', 'User updated their personal profile');
+    res.json({ status: 'success' });
+  });
+});
+
+// Change Password
+app.post('/api/changePassword', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  // If editor, check DB
+  if (req.user.role === 'editor') {
+    db.query('SELECT password FROM editors WHERE username = ?', [req.user.username], async (err, results) => {
+      if (err || results.length === 0) return res.status(500).json({ error: 'User not found' });
+
+      const valid = await bcrypt.compare(currentPassword, results[0].password);
+      if (!valid) return res.json({ status: 'error', message: 'Current password incorrect' });
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+      db.query('UPDATE editors SET password = ? WHERE username = ?', [hashedPassword, req.user.username], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        logActivity(req.user.username, 'Password Change', 'User changed their account password');
+        res.json({ status: 'success' });
+      });
+    });
+  } else if (req.user.role === 'admin') {
+    // Admin password change (usually from .env, but we can prevent it or handle specifically)
+    res.json({ status: 'error', message: 'Admin password can only be changed via server environment variables' });
+  }
+});
+
+// Get Login Activity (Last 5)
+app.get('/api/getLoginActivity', authenticateToken, (req, res) => {
+  const sql = 'SELECT * FROM login_history WHERE username = ? ORDER BY timestamp DESC LIMIT 5';
+  db.query(sql, [req.user.username], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// SMTP Configuration (Admin Only)
+app.get('/api/getSMTP', authenticateToken, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+
+  db.query('SELECT * FROM app_settings WHERE setting_key IN ("smtp_email", "smtp_password")', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    const settings = {};
+    results.forEach(r => {
+      settings[r.setting_key] = r.is_encrypted ? decrypt(r.setting_value) : r.setting_value;
+    });
+
+    res.json({
+      email: settings.smtp_email || '',
+      password: settings.smtp_password ? '********' : '' // Don't send real password to frontend for display
+    });
+  });
+});
+
+app.post('/api/updateSMTP', authenticateToken, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+
+  const { email, password } = req.body;
+  const encryptedPassword = encrypt(password);
+
+  const queries = [
+    { sql: 'INSERT INTO app_settings (setting_key, setting_value, is_encrypted) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', params: ['smtp_email', email, false] }
+  ];
+
+  if (password && password !== '********') {
+    queries.push({ sql: 'INSERT INTO app_settings (setting_key, setting_value, is_encrypted) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', params: ['smtp_password', encryptedPassword, true] });
+  }
+
+  // Execute queries
+  let count = 0;
+  let hasError = false;
+  queries.forEach(q => {
+    db.query(q.sql, q.params, (err) => {
+      count++;
+      if (err) hasError = true;
+      if (count === queries.length) {
+        if (hasError) return res.status(500).json({ status: 'error' });
+        logActivity(req.user.username, 'SMTP Update', 'Admin updated system SMTP settings');
+        res.json({ status: 'success' });
+      }
+    });
+  });
+});
+
+// Test SMTP
+app.post('/api/testSMTP', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+
+  const { email, password } = req.body;
+  let testPassword = password;
+
+  if (password === '********') {
+    // Fetch current encrypted password
+    const result = await new Promise((resolve) => {
+      db.query('SELECT setting_value FROM app_settings WHERE setting_key = "smtp_password"', (err, results) => {
+        if (!err && results.length > 0) resolve(decrypt(results[0].setting_value));
+        else resolve(null);
+      });
+    });
+    testPassword = result;
+  }
+
+  if (!email || !testPassword) return res.json({ status: 'error', message: 'Missing credentials' });
+
+  const testTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: email, pass: testPassword }
+  });
+
+  try {
+    await testTransporter.verify();
+    res.json({ status: 'success' });
+  } catch (err) {
+    res.json({ status: 'error', message: err.message });
+  }
+});
+
+// Subscription Info (Admin Only)
+app.get('/api/getSubscription', authenticateToken, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+
+  db.query('SELECT * FROM subscriptions LIMIT 1', (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length > 0) {
+      res.json(results[0]);
+    } else {
+      res.json({ plan_name: 'Professional', renewal_date: '2026-03-26', status: 'Active' });
+    }
+  });
+});
+
+// Update Preferences
+app.post('/api/updatePreferences', authenticateToken, (req, res) => {
+  const { notifications, language } = req.body;
+  const sql = `
+    INSERT INTO user_profiles (username, notifications, language) 
+    VALUES (?, ?, ?) 
+    ON DUPLICATE KEY UPDATE notifications = VALUES(notifications), language = VALUES(language)
+  `;
+  db.query(sql, [req.user.username, JSON.stringify(notifications), language], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ status: 'success' });
+  });
+});
+
+app.post('/api/uploadAvatar', authenticateToken, avatarUpload.single('avatar'), (req, res) => {
+  if (!req.file) return res.json({ status: 'error', message: 'No file uploaded' });
+
+  // Convert uploaded file buffer to Base64 data URI and store in database
+  // This ensures persistence on cloud platforms (Railway) where filesystem is ephemeral
+  const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+  const sql = `
+    INSERT INTO user_profiles (username, avatar_url) 
+    VALUES (?, ?) 
+    ON DUPLICATE KEY UPDATE avatar_url = VALUES(avatar_url)
+  `;
+
+  db.query(sql, [req.user.username, base64Image], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
+    res.json({ status: 'success', avatar_url: base64Image });
+  });
 });
 
 // Catch-all: serve React app for any non-API route (SPA support)

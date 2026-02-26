@@ -10,6 +10,7 @@ import GenerateReport from "./GenerateReport";
 import AddEditor from "./AddEditor";
 import ActivityLogs from "./ActivityLogs";
 import Login from "./Login";
+import Account from "./Account";
 import { useAuth } from "./AuthContext";
 
 function ProtectedRoute({ children }) {
@@ -42,6 +43,7 @@ function App() {
           <Route path="report" element={<GenerateReport />} />
           <Route path="addeditor" element={<AddEditor />} />
           <Route path="logs" element={<ActivityLogs />} />
+          <Route path="account" element={<Account />} />
         </Route>
       </Routes>
     </HashRouter>

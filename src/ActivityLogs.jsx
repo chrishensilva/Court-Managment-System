@@ -48,7 +48,12 @@ function ActivityLogs() {
                         <tbody>
                             {logs.map((log) => (
                                 <tr key={log.id}>
-                                    <td style={{ fontWeight: 'bold', color: log.username === 'admin' ? '#007bff' : '#28a745' }}>
+                                    <td style={{ fontWeight: 'bold', color: log.username === 'admin' ? '#007bff' : '#28a745', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <img
+                                            src={log.avatar_url || 'https://via.placeholder.com/30'}
+                                            alt="Avatar"
+                                            style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+                                        />
                                         {log.username}
                                     </td>
                                     <td>{log.action}</td>

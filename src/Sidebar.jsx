@@ -86,6 +86,10 @@ function Sidebar({ isOpen, onClose }) {
             </h3>
           </>
         )}
+        <h3 className={active === "/account" ? "active" : ""} onClick={() => handleNavigate("/account")}>
+          <img src={dash} alt="Account Icon" className="sidebar-icon" />
+          My Account
+        </h3>
       </div>
 
       <div className="sidebar-logout">
