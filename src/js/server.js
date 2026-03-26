@@ -849,7 +849,7 @@ app.post('/api/register', async (req, res) => {
         res.cookie('token', token, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
           maxAge: 24 * 60 * 60 * 1000
         });
 
@@ -876,7 +876,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000
     });
     const logId = user.role === 'admin' ? user.userId : user.owner_id;
