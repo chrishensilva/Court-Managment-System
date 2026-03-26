@@ -872,8 +872,8 @@ app.post('/api/register', async (req, res) => {
 
         res.cookie('token', token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          secure: true,
+          sameSite: 'none',
           maxAge: 24 * 60 * 60 * 1000
         });
 
@@ -897,12 +897,14 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
   const handleSuccessfulLogin = (user) => {
     const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
-    res.cookie('token', token, {
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: true, // Always secure for cross-site
+      sameSite: 'none', // Required for cross-site (Vercel to Render)
       maxAge: 24 * 60 * 60 * 1000
-    });
+    };
+    
+    res.cookie('token', token, cookieOptions);
     const logId = user.role === 'admin' ? user.userId : user.owner_id;
     logActivity(user.username, 'Login', 'User logged in', { req, userId: logId });
     res.json({ status: 'success', user });
@@ -952,7 +954,11 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  res.clearCookie('token');
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+  });
   res.json({ status: 'success' });
 });
 
@@ -1172,9 +1178,11 @@ app.post('/api/testSMTP', authenticateToken, async (req, res) => {
 
   try {
     await testTransporter.verify();
+    console.log(`[SMTP] Test Success for user ${userId}`);
     res.json({ status: 'success' });
   } catch (err) {
-    res.json({ status: 'error', message: err.message });
+    console.error(`[SMTP] Test Failed for user ${userId}:`, err.message);
+    res.json({ status: 'error', message: `Server test failed: ${err.message}` });
   }
 });
 
