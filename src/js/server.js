@@ -434,7 +434,7 @@ const logActivity = (username, action, details, extra = {}) => {
 // --- HELPER: Get Dynamic Email Transporter (returns null if SMTP not configured) ---
 const getDynamicTransporter = async (userId) => {
   return new Promise((resolve) => {
-    db.query('SELECT setting_key, setting_value, is_encrypted FROM app_settings WHERE owner_id = ? AND setting_key IN ("smtp_email", "smtp_password")', [userId], (err, results) => {
+    db.query('SELECT setting_key, setting_value, is_encrypted FROM app_settings WHERE owner_id = ? AND setting_key IN (?, ?)', [userId, 'smtp_email', 'smtp_password'], (err, results) => {
       if (err || results.length < 2) {
         // No SMTP configured for this user — resolve null to skip email silently
         resolve(null);
@@ -1104,7 +1104,7 @@ app.get('/api/getLoginActivity', authenticateToken, (req, res) => {
 // SMTP Configuration
 app.get('/api/getSMTP', authenticateToken, (req, res) => {
   const userId = req.user.userId;
-  db.query('SELECT * FROM app_settings WHERE owner_id = ? AND setting_key IN ("smtp_email", "smtp_password")', [userId], (err, results) => {
+  db.query('SELECT * FROM app_settings WHERE owner_id = ? AND setting_key IN (?, ?)', [userId, 'smtp_email', 'smtp_password'], (err, results) => {
     if (err) return res.status(500).json({ status: 'error', message: err.message });
 
     const settings = {};
@@ -1155,9 +1155,9 @@ app.post('/api/testSMTP', authenticateToken, async (req, res) => {
 
   if (password === '********') {
     const result = await new Promise((resolve) => {
-      db.query('SELECT setting_value FROM app_settings WHERE owner_id = ? AND setting_key = "smtp_password"', [userId], (err, results) => {
-        if (!err && results.length > 0) resolve(decrypt(results[0].setting_value));
-        else resolve(null);
+      db.query("SELECT setting_value FROM app_settings WHERE owner_id = ? AND setting_key = ?", [userId, 'smtp_password'], (err, results) => {
+        if (err || results.length === 0) return res.status(500).json({ status: 'error', message: 'No SMTP password configured for connection test' });
+        resolve(decrypt(results[0].setting_value));
       });
     });
     testPassword = result;
