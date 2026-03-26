@@ -368,9 +368,17 @@ initMySQL();
 db.getConnection((err, connection) => {
   if (err) {
     console.error("CRITICAL: Database connection failed!");
-    console.error("Error details:", err.message);
+    console.error("Error code:", err.code);
+    console.error("Error message:", err.message);
+    console.error("Full error:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
     if (err.code === 'ENOTFOUND') {
-      console.error("Suggestion: The database host could not be resolved. Check your DB_HOST in .env");
+      console.error("Suggestion: The database host could not be resolved. Check DB_HOST.");
+    } else if (err.code === 'ECONNREFUSED') {
+      console.error("Suggestion: Connection refused. Check DB_PORT and that DB server is running.");
+    } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
+      console.error("Suggestion: Wrong DB_USER or DB_PASSWORD.");
+    } else if (err.code === 'HANDSHAKE_NO_SSL_SUPPORT') {
+      console.error("Suggestion: Server doesn't support SSL. Try setting ssl: undefined.");
     }
   } else {
     console.log("Database connection successful!");
