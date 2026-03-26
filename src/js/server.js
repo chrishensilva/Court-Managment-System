@@ -52,10 +52,24 @@ function decrypt(text) {
 }
 
 app.use(cors({
-  origin: process.env.VITE_FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:5176',
+      'http://localhost:5177',
+      process.env.VITE_FRONTEND_URL
+    ];
+    if (!origin || allowed.includes(origin) || origin.startsWith('http://localhost:')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
 // Rate limiting for login
@@ -87,24 +101,41 @@ if (isProduction) {
 
 // --- DATABASE INITIALIZATION (MySQL) ---
 const initMySQL = () => {
-  // Create editors table
-  const createEditorsTable = `
-        CREATE TABLE IF NOT EXISTS editors (
+  // --- NEW: users table (for all users, including admins) ---
+  const createUsersTable = `
+        CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) UNIQUE NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
             password VARCHAR(255) NOT NULL,
-            permissions TEXT NOT NULL,
+            role VARCHAR(50) DEFAULT 'admin',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `;
-  db.query(createEditorsTable, (err) => {
-    if (err) console.error("Error creating editors table:", err);
+  db.query(createUsersTable, async (err) => {
+    if (err) {
+      console.error("Error creating users table:", err);
+    } else {
+      // Seed default admin if table is empty
+      db.query("SELECT COUNT(*) as count FROM users", async (err, result) => {
+        if (!err && result[0].count === 0) {
+          const adminUsername = process.env.ADMIN_USERNAME || "admin";
+          const adminPassword = process.env.ADMIN_PASSWORD || "123";
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash(adminPassword, salt);
+          db.query("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", 
+            [adminUsername, `${adminUsername}@system.local`, hashedPassword, "admin"]);
+          console.log(`Default admin user created: ${adminUsername}`);
+        }
+      });
+    }
   });
 
   // Create activity_log table
   const createLogsTable = `
         CREATE TABLE IF NOT EXISTS activity_log (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id INT,
             username VARCHAR(255) NOT NULL,
             action VARCHAR(255) NOT NULL,
             details TEXT,
@@ -115,22 +146,11 @@ const initMySQL = () => {
     if (err) console.error("Error creating logs table:", err);
   });
 
-  // Ensure status column exists in userdata
-  const checkStatusColumn = "SHOW COLUMNS FROM userdata LIKE 'status'";
-  db.query(checkStatusColumn, (err, results) => {
-    if (err) return;
-    if (results.length === 0) {
-      const addStatusColumn = "ALTER TABLE userdata ADD COLUMN status VARCHAR(50) DEFAULT 'ongoing'";
-      db.query(addStatusColumn, (err) => {
-        if (err) console.error("Error adding status column:", err);
-      });
-    }
-  });
-
   // Create case_documents table
   const createDocsTable = `
         CREATE TABLE IF NOT EXISTS case_documents (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id INT,
             user_nic VARCHAR(255) NOT NULL,
             file_name VARCHAR(255) NOT NULL,
             file_path VARCHAR(255) NOT NULL,
@@ -145,6 +165,7 @@ const initMySQL = () => {
   const createProfilesTable = `
         CREATE TABLE IF NOT EXISTS user_profiles (
             username VARCHAR(255) PRIMARY KEY,
+            owner_id INT,
             fullname VARCHAR(255),
             email VARCHAR(255),
             phone VARCHAR(20),
@@ -155,18 +176,17 @@ const initMySQL = () => {
     `;
   db.query(createProfilesTable, (err) => {
     if (err) console.error("Error creating profiles table:", err);
-    // Ensure avatar_url column supports large Base64 strings
-    db.query('ALTER TABLE user_profiles MODIFY avatar_url LONGTEXT', (err) => {
-      if (err && !err.message.includes('Unknown column')) { /* ignore if already correct */ }
-    });
   });
 
-  // Create app_settings table (for SMTP and other global configs)
+  // Create app_settings table
   const createSettingsTable = `
         CREATE TABLE IF NOT EXISTS app_settings (
-            setting_key VARCHAR(255) PRIMARY KEY,
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id INT,
+            setting_key VARCHAR(255),
             setting_value TEXT,
-            is_encrypted BOOLEAN DEFAULT FALSE
+            is_encrypted BOOLEAN DEFAULT FALSE,
+            UNIQUE KEY (owner_id, setting_key)
         )
     `;
   db.query(createSettingsTable, (err) => {
@@ -177,6 +197,7 @@ const initMySQL = () => {
   const createLoginHistoryTable = `
         CREATE TABLE IF NOT EXISTS login_history (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id INT,
             username VARCHAR(255) NOT NULL,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             ip_address VARCHAR(45),
@@ -187,74 +208,236 @@ const initMySQL = () => {
     if (err) console.error("Error creating login history table:", err);
   });
 
-  // Create subscription table
-  const createSubscriptionTable = `
-        CREATE TABLE IF NOT EXISTS subscriptions (
+  // Create todo table
+  const createTodoTable = `
+        CREATE TABLE IF NOT EXISTS todo (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id INT,
+            task TEXT NOT NULL,
+            date DATE,
+            time TIME
+        )
+    `;
+  db.query(createTodoTable, (err) => {
+    if (err) console.error("Error creating todo table:", err);
+  });
+
+  // Create lawyerdata table
+  const createLawyersTable = `
+        CREATE TABLE IF NOT EXISTS lawyerdata (
+            owner_id INT NOT NULL,
+            nic VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255),
+            contact VARCHAR(20),
+            note TEXT,
+            PRIMARY KEY (owner_id, nic)
+        )
+    `;
+  db.query(createLawyersTable, (err) => {
+    if (err) console.error("Error creating lawyers table:", err);
+  });
+
+  // Create userdata table (Clients/Cases)
+  const createUsersDataTable = `
+        CREATE TABLE IF NOT EXISTS userdata (
+            owner_id INT NOT NULL,
+            nic VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255),
+            number VARCHAR(20),
+            last_date VARCHAR(255),
+            next_date VARCHAR(255),
+            note TEXT,
+            status VARCHAR(50) DEFAULT 'ongoing',
+            PRIMARY KEY (owner_id, nic)
+        )
+    `;
+  db.query(createUsersDataTable, (err) => {
+    if (err) console.error("Error creating userdata table:", err);
+  });
+
+  // Create case_assignments table
+  const createAssignmentsTable = `
+        CREATE TABLE IF NOT EXISTS case_assignments (
+            owner_id INT NOT NULL,
+            user_nic VARCHAR(255) NOT NULL,
+            lawyer_name VARCHAR(255) NOT NULL,
+            assigned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (owner_id, user_nic, lawyer_name)
+        )
+    `;
+  db.query(createAssignmentsTable, (err) => {
+    if (err) console.error("Error creating assignments table:", err);
+  });
+
+  // Create subscriptions table
+  const createSubsTable = `
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            owner_id INT PRIMARY KEY,
             plan_name VARCHAR(255) DEFAULT 'Professional',
             renewal_date DATE,
             status VARCHAR(50) DEFAULT 'Active'
         )
     `;
-  db.query(createSubscriptionTable, (err) => {
-    if (err) console.error("Error creating subscription table:", err);
+  db.query(createSubsTable, (err) => {
+    if (err) console.error("Error creating subscriptions table:", err);
+  });
+
+  // --- MIGRATION LOGIC FOR EXISTING TABLES ---
+  const tablesToFix = [
+    { name: 'userdata', pk: ['owner_id', 'nic'] },
+    { name: 'lawyerdata', pk: ['owner_id', 'nic'] }
+  ];
+
+  tablesToFix.forEach(table => {
+    // 1. Ensure owner_id column exists
+    db.query(`SHOW COLUMNS FROM ${table.name} LIKE 'owner_id'`, (err, results) => {
+      if (!err && results.length === 0) {
+        db.query(`ALTER TABLE ${table.name} ADD COLUMN owner_id INT NOT NULL FIRST`, (err) => {
+           if (!err) {
+             // 2. Resolve primary key conflict
+             db.query(`ALTER TABLE ${table.name} DROP PRIMARY KEY, ADD PRIMARY KEY (${table.pk.join(',')})`, (err) => {
+               if (err) console.error(`Failed to update PK for ${table.name}:`, err.message);
+             });
+           }
+        });
+      } else if (!err) {
+        // Just ensure PK is correct if column already exists
+        db.query(`SHOW KEYS FROM ${table.name} WHERE Key_name = 'PRIMARY'`, (err, keys) => {
+          if (!err && keys.length === 1 && keys[0].Column_name !== 'owner_id') {
+               db.query(`ALTER TABLE ${table.name} DROP PRIMARY KEY, ADD PRIMARY KEY (${table.pk.join(',')})`, (err) => {
+                 if (err) console.error(`Failed to update PK for ${table.name}:`, err.message);
+               });
+          }
+        });
+      }
+    });
+  });
+
+  // General check for owner_id in other tables
+  const otherTables = ['todo', 'activity_log', 'login_history', 'app_settings', 'case_documents', 'user_profiles', 'editors'];
+  otherTables.forEach(table => {
+    db.query(`SHOW COLUMNS FROM ${table} LIKE 'owner_id'`, (err, results) => {
+      if (!err && results.length === 0) {
+        // use ADD COLUMN owner_id INT without AFTER id (since not all tables have 'id', e.g., user_profiles)
+        db.query(`ALTER TABLE ${table} ADD COLUMN owner_id INT`);
+      }
+      
+      if (table === 'app_settings') {
+        db.query(`SHOW COLUMNS FROM app_settings LIKE 'id'`, (err, idResults) => {
+          if (!err && idResults.length === 0) {
+             db.query(`ALTER TABLE app_settings DROP PRIMARY KEY, ADD id INT AUTO_INCREMENT PRIMARY KEY FIRST, ADD UNIQUE KEY unique_owner_setting (owner_id, setting_key)`, (err) => {
+                 if (err) console.error("Failed to migrate app_settings unique key:", err.message);
+                 else console.log("Migrated app_settings schema successfully.");
+             });
+          } else if (!err && idResults.length > 0) {
+             // Ensure unique index if table ALREADY has id but might be missing proper unique key
+             db.query(`SHOW INDEX FROM app_settings WHERE Key_name = 'unique_owner_setting' OR Key_name = 'owner_id'`, (err, idxResults) => {
+               if (!err && idxResults.length === 0) {
+                 db.query(`ALTER TABLE app_settings ADD UNIQUE KEY unique_owner_setting (owner_id, setting_key)`, (err) => {
+                     if (err) console.error("Failed to add app_settings unique key:", err.message);
+                 });
+               }
+             });
+          }
+        });
+      }
+    });
+  });
+
+  // Create editors table (sub-users per account with permissions)
+  db.query(`
+    CREATE TABLE IF NOT EXISTS editors (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      owner_id INT NOT NULL,
+      username VARCHAR(255) NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      permissions JSON,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_editor_per_owner (owner_id, username)
+    )
+  `, (err) => {
+    if (err) console.error("Error creating editors table:", err.message);
   });
 };
 
 initMySQL();
 
+// Check database connection on startup
+db.getConnection((err, connection) => {
+  if (err) {
+    console.error("CRITICAL: Database connection failed!");
+    console.error("Error details:", err.message);
+    if (err.code === 'ENOTFOUND') {
+      console.error("Suggestion: The database host could not be resolved. Check your DB_HOST in .env");
+    }
+  } else {
+    console.log("Database connection successful!");
+    connection.release();
+  }
+});
+
 // --- HELPER: Log Activity ---
-const logActivity = (username, action, details = "", req = null) => {
-  const sql = "INSERT INTO activity_log (username, action, details) VALUES (?, ?, ?)";
-  db.query(sql, [username, action, details], (err) => {
+const logActivity = (username, action, details, extra = {}) => {
+  const owner_id = extra.userId || null;
+  const sql = "INSERT INTO activity_log (owner_id, username, action, details) VALUES (?, ?, ?, ?)";
+  db.query(sql, [owner_id, username, action, typeof details === 'object' ? JSON.stringify(details) : details], (err) => {
     if (err) console.error("Logging failed:", err);
   });
 
-  if (action === 'Login' && req) {
-    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const device = req.headers['user-agent'];
-    const historySql = "INSERT INTO login_history (username, ip_address, device_type) VALUES (?, ?, ?)";
-    db.query(historySql, [username, ip, device], (err) => {
+  if (action === 'Login' && extra.req) {
+    const ip = extra.req.ip || extra.req.headers['x-forwarded-for'] || extra.req.socket.remoteAddress;
+    const device = extra.req.headers['user-agent'];
+    const historySql = "INSERT INTO login_history (owner_id, username, ip_address, device_type) VALUES (?, ?, ?, ?)";
+    db.query(historySql, [owner_id, username, ip, device], (err) => {
       if (err) console.error("Login history logging failed:", err);
     });
   }
 };
 
-// --- Email Transporter ---
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'chrishensilva@gmail.com',
-    pass: 'gcne hqrr dzmb mqjo'
-  }
-});
+// --- HELPER: Get Dynamic Email Transporter (returns null if SMTP not configured) ---
+const getDynamicTransporter = async (userId) => {
+  return new Promise((resolve) => {
+    db.query('SELECT setting_key, setting_value, is_encrypted FROM app_settings WHERE owner_id = ? AND setting_key IN ("smtp_email", "smtp_password")', [userId], (err, results) => {
+      if (err || results.length < 2) {
+        // No SMTP configured for this user — resolve null to skip email silently
+        resolve(null);
+      } else {
+        const settings = {};
+        results.forEach(r => {
+          settings[r.setting_key] = r.is_encrypted ? decrypt(r.setting_value) : r.setting_value;
+        });
+        if (!settings.smtp_email || !settings.smtp_password) {
+          resolve(null);
+        } else {
+          resolve(nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: settings.smtp_email, pass: settings.smtp_password }
+          }));
+        }
+      }
+    });
+  });
+};
 
 // --- HELPER: Send Email ---
-async function sendAssignmentEmail(lawyerEmail, lawyerName, user, caseNIC) {
+async function sendAssignmentEmail(lawyerEmail, lawyerName, user, caseNIC, userId) {
+  const transporter = await getDynamicTransporter(userId);
+  if (!transporter) {
+    console.log(`[Email] Skipped: No SMTP configured for user ${userId}. Set up SMTP in My Account.`);
+    return false;
+  }
   const mailOptions = {
-    from: 'chrishensilva@gmail.com',
+    from: transporter.options.auth.user,
     to: lawyerEmail,
-    subject: 'New Case Assigned - Court Record System',
-    text: `Dear ${lawyerName},
-
-You have been assigned a new case.
-
-User Name: ${user.name}
-NIC: ${caseNIC}
-Email: ${user.email}
-Contact: ${user.number}
-Last Court Date: ${user.last_date}
-Next Court Date: ${user.next_date}
-Case Note: ${user.note || 'N/A'}
-
-Please prepare accordingly.
-
-Regards,
-Court Record Management System`
+    subject: `New Case Assigned: ${caseNIC}`,
+    text: `Dear ${lawyerName},\r\n\r\nYou have been assigned a new case in the Court Case Management System.\r\n\r\nCLIENT DETAILS:\r\n- Name: ${user.name}\r\n- NIC: ${caseNIC}\r\n- Email: ${user.email}\r\n- Contact: ${user.number}\r\n\r\nCASE SCHEDULE:\r\n- Last Date: ${user.last_date}\r\n- Next Date: ${user.next_date}\r\n- Current Status: ${user.status || 'Ongoing'}\r\n\r\nNOTES:\r\n${user.note || 'No specific notes provided.'}\r\n\r\nThis is an automated notification. Please do not reply to this email.\r\n\r\nBest Regards,\r\nCourt Record Management System`
   };
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log(`Success: Assignment email sent to ${lawyerEmail}`);
     return true;
   } catch (error) {
     console.error('Email send failed:', error);
@@ -308,15 +491,16 @@ app.get('/api/getLawyers', authenticateToken, (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
+  const userId = req.user.userId;
 
-  const countSql = 'SELECT COUNT(*) as total FROM lawyerdata WHERE nic LIKE ? OR name LIKE ?';
-  db.query(countSql, [`%${search}%`, `%${search}%`], (err, countResults) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const countSql = 'SELECT COUNT(*) as total FROM lawyerdata WHERE owner_id = ? AND (nic LIKE ? OR name LIKE ?)';
+  db.query(countSql, [userId, `%${search}%`, `%${search}%`], (err, countResults) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     const total = countResults[0].total;
 
-    const sql = 'SELECT * FROM lawyerdata WHERE nic LIKE ? OR name LIKE ? LIMIT ? OFFSET ?';
-    db.query(sql, [`%${search}%`, `%${search}%`, limit, offset], (err, data) => {
-      if (err) return res.status(500).json({ error: err.message });
+    const sql = 'SELECT * FROM lawyerdata WHERE owner_id = ? AND (nic LIKE ? OR name LIKE ?) LIMIT ? OFFSET ?';
+    db.query(sql, [userId, `%${search}%`, `%${search}%`, limit, offset], (err, data) => {
+      if (err) return res.status(500).json({ status: 'error', message: err.message });
       res.json({
         data,
         pagination: {
@@ -330,21 +514,22 @@ app.get('/api/getLawyers', authenticateToken, (req, res) => {
   });
 });
 
-// Get users (simple list)
+// Get users (simple list) - These are actually the clients/cases
 app.get('/api/getUsers', authenticateToken, (req, res) => {
   const search = req.query.search || '';
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
+  const userId = req.user.userId;
 
-  const countSql = 'SELECT COUNT(*) as total FROM userdata WHERE nic LIKE ? OR name LIKE ?';
-  db.query(countSql, [`%${search}%`, `%${search}%`], (err, countResults) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const countSql = 'SELECT COUNT(*) as total FROM userdata WHERE owner_id = ? AND (nic LIKE ? OR name LIKE ?)';
+  db.query(countSql, [userId, `%${search}%`, `%${search}%`], (err, countResults) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     const total = countResults[0].total;
 
-    const sql = 'SELECT * FROM userdata WHERE nic LIKE ? OR name LIKE ? ORDER BY next_date ASC LIMIT ? OFFSET ?';
-    db.query(sql, [`%${search}%`, `%${search}%`, limit, offset], (err, data) => {
-      if (err) return res.status(500).json({ error: err.message });
+    const sql = 'SELECT * FROM userdata WHERE owner_id = ? AND (nic LIKE ? OR name LIKE ?) LIMIT ? OFFSET ?';
+    db.query(sql, [userId, `%${search}%`, `%${search}%`, limit, offset], (err, data) => {
+      if (err) return res.status(500).json({ status: 'error', message: err.message });
       res.json({
         data,
         pagination: {
@@ -360,14 +545,16 @@ app.get('/api/getUsers', authenticateToken, (req, res) => {
 
 // Get user cases (with assignments)
 app.get('/api/getUserCases', authenticateToken, (req, res) => {
+  const userId = req.user.userId;
   const sql = `
         SELECT u.*, a.lawyer_name AS assigned_lawyer 
         FROM userdata u
-        LEFT JOIN case_assignments a ON u.nic = a.user_nic
+        LEFT JOIN case_assignments a ON u.nic = a.user_nic AND u.owner_id = a.owner_id
+        WHERE u.owner_id = ?
         ORDER BY u.next_date ASC
     `;
-  db.query(sql, (err, data) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(sql, [userId], (err, data) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(data);
   });
 });
@@ -375,73 +562,124 @@ app.get('/api/getUserCases', authenticateToken, (req, res) => {
 // Assign lawyer
 app.post('/api/assignLawyer', authenticateToken, async (req, res) => {
   const { nic, lawyer, sendEmail } = req.body;
+  const userId = req.user.userId;
   if (!nic || !lawyer) return res.json({ status: 'error', message: 'NIC or lawyer missing' });
 
-  const sql = 'REPLACE INTO case_assignments (user_nic, lawyer_name, assigned_date) VALUES (?, ?, ?)';
-  db.query(sql, [nic, lawyer, new Date().toISOString().slice(0, 19).replace('T', ' ')], async (err) => {
+  const sql = 'INSERT INTO case_assignments (owner_id, user_nic, lawyer_name, assigned_date) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE lawyer_name = VALUES(lawyer_name), assigned_date = VALUES(assigned_date)';
+  db.query(sql, [userId, nic, lawyer, new Date().toISOString().slice(0, 19).replace('T', ' ')], async (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
+
+    let emailSent = false;
+    let emailMessage = '';
 
     if (sendEmail) {
-      db.query('SELECT email FROM lawyerdata WHERE name = ?', [lawyer], async (err, lawyers) => {
-        if (!err && lawyers.length > 0) {
-          db.query('SELECT * FROM userdata WHERE nic = ?', [nic], async (err, users) => {
-            if (!err && users.length > 0) {
-              await sendAssignmentEmail(lawyers[0].email, lawyer, users[0], nic);
-            }
+      // Fetch lawyer email and user info
+      try {
+        const lawyers = await new Promise((resolve, reject) => {
+          db.query('SELECT * FROM lawyerdata WHERE name = ? AND owner_id = ?', [lawyer, userId], (err, res) => err ? reject(err) : resolve(res));
+        });
+        
+        if (lawyers.length > 0) {
+          const users = await new Promise((resolve, reject) => {
+            db.query('SELECT * FROM userdata WHERE nic = ? AND owner_id = ?', [nic, userId], (err, res) => err ? reject(err) : resolve(res));
           });
+          
+          if (users.length > 0) {
+            emailSent = await sendAssignmentEmail(lawyers[0].email, lawyer, users[0], nic, userId);
+            if (!emailSent) {
+              emailMessage = ' (Email not sent: No SMTP configured)';
+            }
+          }
         }
-      });
+      } catch (e) {
+        console.error("Error during email assignment fetch:", e);
+        emailMessage = ' (Failed to fetch email data)';
+      }
     }
-    res.json({ status: 'success', message: 'Lawyer assigned successfully' });
+
+    logActivity(req.user.username, 'Lawyer Assignment', `Assigned ${lawyer} to case ${nic}`, { userId: req.user.userId });
+    res.json({ status: 'success', message: `Assignment successful${emailMessage}` });
   });
 });
 
-// Add Lawyer
+// Add lawyer
 app.post('/api/addLawyer', authenticateToken, (req, res) => {
-  const { name, nic, email, number, note } = req.body;
-  const sql = 'INSERT INTO lawyerdata (name, nic, email, contact, note) VALUES (?, ?, ?, ?, ?)';
-  db.query(sql, [name, nic, email, number, note], (err) => {
-    if (err) return res.json({ status: 'error', message: err.message });
-    res.json({ status: 'success', message: 'Lawyer added successfully' });
-  });
-});
-
-app.post('/api/deleteLawyer', authenticateToken, (req, res) => {
-  const { nic } = req.body;
-  db.query('DELETE FROM lawyerdata WHERE nic = ?', [nic], (err) => {
-    if (err) return res.json({ status: 'error', message: err.message });
+  const { nic, name, email, contact, note } = req.body;
+  const userId = req.user.userId;
+  const sql = 'INSERT INTO lawyerdata (owner_id, nic, name, email, contact, note) VALUES (?, ?, ?, ?, ?, ?)';
+  db.query(sql, [userId, nic, name, email, contact, note], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Add Lawyer', `Added lawyer: ${name} (${nic})`, { userId: req.user.userId });
     res.json({ status: 'success' });
   });
 });
 
-// Add User
-app.post('/api/addUser', authenticateToken, (req, res) => {
-  const { name, nic, email, number, address, lawyer1, lawyer2, lawyer3, note, ldate, ndate, casetype } = req.body;
-  const sql = `
-        INSERT INTO userdata (name, nic, email, number, address, lawyer1, lawyer2, lawyer3, note, last_date, next_date, casetype) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-  db.query(sql, [name, nic, email, number, address, lawyer1, lawyer2, lawyer3, note, ldate, ndate, casetype], (err) => {
-    if (err) return res.json({ status: 'error', message: err.message });
-    res.json({ status: 'success', message: 'User added successfully' });
+// Delete lawyer
+app.post('/api/deleteLawyer', authenticateToken, (req, res) => {
+  const { nic } = req.body;
+  const userId = req.user.userId;
+  db.query('DELETE FROM lawyerdata WHERE nic = ? AND owner_id = ?', [nic, userId], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Delete Lawyer', `Deleted lawyer: ${nic}`, { userId: req.user.userId });
+    res.json({ status: 'success' });
   });
 });
 
+// Update lawyer
+app.post('/api/updateLawyer', authenticateToken, (req, res) => {
+  const { nic, name, email, contact, note } = req.body;
+  const userId = req.user.userId;
+  const sql = 'UPDATE lawyerdata SET name=?, email=?, contact=?, note=? WHERE nic=? AND owner_id=?';
+  db.query(sql, [name, email, contact, note, nic, userId], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Update Lawyer', `Updated lawyer: ${name} (${nic})`, { userId: req.user.userId });
+    res.json({ status: 'success' });
+  });
+});
+
+// Add user (Client/Case)
+app.post('/api/addUser', authenticateToken, (req, res) => {
+  const { name, nic, email, number, last_date, next_date, note } = req.body;
+  const userId = req.user.userId;
+  const sql = 'INSERT INTO userdata (owner_id, name, nic, email, number, last_date, next_date, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+  db.query(sql, [userId, name, nic, email, number, last_date, next_date, note], (err) => {
+    if (err) return res.json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Add Client', `Created new case for: ${name} (${nic})`, { userId: req.user.userId });
+    res.json({ status: 'success' });
+  });
+});
+
+// Delete user (Client/Case)
 app.post('/api/deleteUser', authenticateToken, (req, res) => {
   const { nic } = req.body;
-  db.query('DELETE FROM userdata WHERE nic = ?', [nic], (err) => {
+  const userId = req.user.userId;
+  db.query('DELETE FROM userdata WHERE nic = ? AND owner_id = ?', [nic, userId], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
-    db.query('DELETE FROM case_assignments WHERE user_nic = ?', [nic], () => {
+    db.query('DELETE FROM case_assignments WHERE user_nic = ? AND owner_id = ?', [nic, userId], () => {
+      logActivity(req.user.username, 'Delete Client', `Removed case file: ${nic}`, { userId: req.user.userId });
       res.json({ status: 'success' });
     });
+  });
+});
+
+// Update user (Client/Case)
+app.post('/api/updateUser', authenticateToken, (req, res) => {
+  const { name, nic, email, number, address, lawyer1, lawyer2, lawyer3, last_date, next_date, note, casetype, status } = req.body;
+  const userId = req.user.userId;
+  const sql = 'UPDATE userdata SET name=?, email=?, number=?, address=?, lawyer1=?, lawyer2=?, lawyer3=?, last_date=?, next_date=?, note=?, casetype=?, status=? WHERE nic=? AND owner_id=?';
+  db.query(sql, [name, email, number, address || null, lawyer1 || null, lawyer2 || null, lawyer3 || null, last_date, next_date, note, casetype, status || 'ongoing', nic, userId], (err) => {
+    if (err) return res.json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Update Client', `Updated case details for: ${nic}`, { userId: req.user.userId });
+    res.json({ status: 'success' });
   });
 });
 
 // Update status
 app.post('/api/updateStatus', authenticateToken, (req, res) => {
   const { nic, status } = req.body;
-  const sql = 'UPDATE userdata SET status = ? WHERE nic = ?';
-  db.query(sql, [status, nic], (err) => {
+  const userId = req.user.userId;
+  const sql = 'UPDATE userdata SET status = ? WHERE nic = ? AND owner_id = ?';
+  db.query(sql, [status, nic, userId], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
     res.json({ status: 'success' });
   });
@@ -449,15 +687,17 @@ app.post('/api/updateStatus', authenticateToken, (req, res) => {
 
 // Todos
 app.get('/api/getTodos', authenticateToken, (req, res) => {
-  db.query('SELECT * FROM todo ORDER BY date ASC, time ASC', (err, data) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  db.query('SELECT * FROM todo WHERE owner_id = ? ORDER BY date ASC, time ASC', [userId], (err, data) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(data);
   });
 });
 
 app.post('/api/addTodo', authenticateToken, (req, res) => {
   const { task, date, time } = req.body;
-  db.query('INSERT INTO todo (task, date, time) VALUES (?, ?, ?)', [task, date, time], (err) => {
+  const userId = req.user.userId;
+  db.query('INSERT INTO todo (owner_id, task, date, time) VALUES (?, ?, ?, ?)', [userId, task, date, time], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
     res.json({ status: 'success' });
   });
@@ -465,7 +705,8 @@ app.post('/api/addTodo', authenticateToken, (req, res) => {
 
 app.post('/api/deleteTodo', authenticateToken, (req, res) => {
   const { id } = req.body;
-  db.query('DELETE FROM todo WHERE id = ?', [id], (err) => {
+  const userId = req.user.userId;
+  db.query('DELETE FROM todo WHERE id = ? AND owner_id = ?', [id, userId], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
     res.json({ status: 'success' });
   });
@@ -473,14 +714,15 @@ app.post('/api/deleteTodo', authenticateToken, (req, res) => {
 
 // Stats & Dashboard
 app.get('/api/dashboard_counts', authenticateToken, (req, res) => {
+  const userId = req.user.userId;
   const sql = `
         SELECT 
-            (SELECT COUNT(*) FROM userdata) as totalClients,
-            (SELECT COUNT(*) FROM lawyerdata) as totalLawyers,
-            (SELECT COUNT(*) FROM userdata) as totalCases
+            (SELECT COUNT(*) FROM userdata WHERE owner_id = ?) as totalClients,
+            (SELECT COUNT(*) FROM lawyerdata WHERE owner_id = ?) as totalLawyers,
+            (SELECT COUNT(*) FROM userdata WHERE owner_id = ?) as totalCases
     `;
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(sql, [userId, userId, userId], (err, results) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json({
       totalClients: results[0].totalClients,
       totalLawyers: results[0].totalLawyers,
@@ -490,9 +732,10 @@ app.get('/api/dashboard_counts', authenticateToken, (req, res) => {
 });
 
 app.get('/api/getCaseStats', authenticateToken, (req, res) => {
-  const sql = 'SELECT casetype AS name, COUNT(*) AS value FROM userdata GROUP BY casetype';
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  const sql = 'SELECT status AS name, COUNT(*) AS value FROM userdata WHERE owner_id = ? GROUP BY status';
+  db.query(sql, [userId], (err, results) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     const stats = results.map(row => ({
       name: row.name ? (row.name.charAt(0).toUpperCase() + row.name.slice(1)) : 'Unknown',
       value: row.value
@@ -502,122 +745,203 @@ app.get('/api/getCaseStats', authenticateToken, (req, res) => {
 });
 
 app.get('/api/getReportData', authenticateToken, (req, res) => {
-  db.query('SELECT * FROM userdata ORDER BY next_date ASC', (err, data) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  db.query('SELECT * FROM userdata WHERE owner_id = ? ORDER BY next_date ASC', [userId], (err, data) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(data);
   });
 });
 
 // Editors Management
 app.get('/api/getEditors', authenticateToken, (req, res) => {
-  db.query('SELECT id, username, permissions FROM editors', (err, data) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  db.query('SELECT id, username, permissions FROM editors WHERE owner_id = ?', [userId], (err, data) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(data);
   });
 });
 
-app.post('/api/addEditor', async (req, res) => {
+app.post('/api/addEditor', authenticateToken, async (req, res) => {
   const { username, password, permissions } = req.body;
+  const userId = req.user.userId;
+  if (!username || !password) return res.json({ status: 'error', message: 'Username and password are required' });
 
   try {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    const permissionsJson = JSON.stringify(permissions || []);
 
-    const sql = 'INSERT INTO editors (username, password, permissions) VALUES (?, ?, ?)';
-    db.query(sql, [username, hashedPassword, JSON.stringify(permissions)], (err) => {
-      if (err) return res.json({ status: 'error', message: err.message });
-      res.json({ status: 'success' });
-    });
+    db.query('INSERT INTO editors (owner_id, username, password, permissions) VALUES (?, ?, ?, ?)',
+      [userId, username, hashedPassword, permissionsJson],
+      (err) => {
+        if (err) {
+          if (err.code === 'ER_DUP_ENTRY') {
+            return res.json({ status: 'error', message: 'An editor with that username already exists.' });
+          }
+          return res.status(500).json({ status: 'error', message: err.message });
+        }
+        logActivity(req.user.username, 'Add Editor', `Created editor account: ${username}`, { userId });
+        res.json({ status: 'success' });
+      }
+    );
   } catch (error) {
-    res.status(500).json({ status: 'error', message: 'Error creating editor' });
+    res.status(500).json({ status: 'error', message: 'Failed to create editor' });
   }
 });
 
 app.post('/api/deleteEditor', authenticateToken, (req, res) => {
   const { id } = req.body;
-  db.query('DELETE FROM editors WHERE id = ?', [id], (err) => {
-    if (err) return res.json({ status: 'error', message: err.message });
+  const userId = req.user.userId;
+  db.query('DELETE FROM editors WHERE id = ? AND owner_id = ?', [id, userId], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Delete Editor', `Removed editor ID: ${id}`, { userId });
     res.json({ status: 'success' });
   });
+});
+
+// --- AUTHENTICATION ---
+
+app.post('/api/register', async (req, res) => {
+  const { username, email, password } = req.body;
+
+  if (!username || !email || !password) {
+    return res.status(400).json({ status: 'error', message: 'All fields are required' });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const checkSql = 'SELECT username, email FROM users WHERE username = ? OR email = ?';
+    db.query(checkSql, [username, email], (err, results) => {
+      if (err) return res.status(500).json({ status: 'error', message: err.message });
+      if (results.length > 0) {
+        const usernameTaken = results.some(r => r.username === username);
+        const emailTaken = results.some(r => r.email === email);
+        if (usernameTaken && emailTaken) {
+          return res.status(400).json({ status: 'error', message: 'Username and email are already in use' });
+        } else if (usernameTaken) {
+          return res.status(400).json({ status: 'error', message: 'Username is already taken. Please choose a different one.' });
+        } else {
+          return res.status(400).json({ status: 'error', message: 'An account with this email already exists. Try logging in instead.' });
+        }
+      }
+
+      const insertSql = 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)';
+      db.query(insertSql, [username, email, hashedPassword], (err, result) => {
+        if (err) return res.status(500).json({ status: 'error', message: err.message });
+
+        const userId = result.insertId;
+        const user = { userId, username, role: 'admin' };
+        const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
+
+        res.cookie('token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000
+        });
+
+        // Initialize default profile
+        db.query('INSERT INTO user_profiles (username, owner_id, email) VALUES (?, ?, ?)', [username, userId, email]);
+        
+        // Initialize default subscription
+        db.query('INSERT INTO subscriptions (owner_id, renewal_date) VALUES (?, DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY))', [userId]);
+
+        logActivity(username, 'Registration', 'New user registered', { userId });
+        res.json({ status: 'success', user });
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: 'Registration failed' });
+  }
 });
 
 app.post('/api/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
 
-  // Check Admin from .env
-  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-    const user = {
-      username: process.env.ADMIN_USERNAME,
-      role: 'admin',
-      permissions: ['dashboard', 'lawyers', 'cases', 'assign', 'addlawyer', 'adduser', 'report', 'addeditor']
-    };
-
+  const handleSuccessfulLogin = (user) => {
     const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
-
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
     });
+    const logId = user.role === 'admin' ? user.userId : user.owner_id;
+    logActivity(user.username, 'Login', 'User logged in', { req, userId: logId });
+    res.json({ status: 'success', user });
+  };
 
-    logActivity(user.username, 'Login', 'Admin logged into the system', req);
-    return res.json({ status: 'success', user });
-  }
-
-  // Check Editors from DB
-  const sql = 'SELECT * FROM editors WHERE username = ?';
-  db.query(sql, [username], async (err, results) => {
+  db.query('SELECT * FROM users WHERE username = ?', [username], async (err, results) => {
     if (err) return res.status(500).json({ status: 'error', message: err.message });
-
+    
     if (results.length > 0) {
-      const user = results[0];
-      const validPassword = await bcrypt.compare(password, user.password);
+      // Main user (admin)
+      const userInDb = results[0];
+      const validPassword = await bcrypt.compare(password, userInDb.password);
+      if (!validPassword) return res.json({ status: 'error', message: 'Invalid credentials' });
 
-      if (!validPassword) {
-        return res.json({ status: 'error', message: 'Invalid credentials' });
-      }
-
-      const userData = {
-        username: user.username,
-        role: 'editor',
-        permissions: JSON.parse(user.permissions)
-      };
-
-      const token = jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
-
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000
+      handleSuccessfulLogin({
+        userId: userInDb.id,
+        username: userInDb.username,
+        role: userInDb.role
       });
-
-      logActivity(user.username, 'Login', 'Editor logged into the system', req);
-      res.json({ status: 'success', user: userData });
     } else {
-      res.json({ status: 'error', message: 'Invalid credentials' });
+      // Sub-user (editor)
+      db.query('SELECT * FROM editors WHERE username = ?', [username], async (err, editorResults) => {
+        if (err) return res.status(500).json({ status: 'error', message: err.message });
+        if (editorResults.length === 0) return res.json({ status: 'error', message: 'Invalid credentials' });
+
+        const editorInDb = editorResults[0];
+        const validPassword = await bcrypt.compare(password, editorInDb.password);
+        if (!validPassword) return res.json({ status: 'error', message: 'Invalid credentials' });
+
+        let parsedPermissions = [];
+        try {
+          parsedPermissions = typeof editorInDb.permissions === 'string' ? JSON.parse(editorInDb.permissions) : editorInDb.permissions;
+        } catch (e) {
+          console.error("Failed to parse permissions", e);
+        }
+
+        handleSuccessfulLogin({
+          userId: editorInDb.owner_id, // They operate on their admin's data
+          owner_id: editorInDb.owner_id,
+          username: editorInDb.username,
+          role: 'editor',
+          permissions: parsedPermissions || []
+        });
+      });
     }
   });
 });
 
 app.post('/api/logout', (req, res) => {
   res.clearCookie('token');
-  res.json({ status: 'success', message: 'Logged out successfully' });
+  res.json({ status: 'success' });
 });
 
-app.get('/api/verifyToken', authenticateToken, (req, res) => {
-  res.json({ status: 'success', user: req.user });
+app.get('/api/verifyToken', (req, res) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(200).json({ status: 'error', message: 'No session' });
+
+  try {
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    res.json({ status: 'success', user: verified });
+  } catch (err) {
+    res.status(200).json({ status: 'error', message: 'Invalid token' });
+  }
 });
 
 app.post('/api/uploadDocument', authenticateToken, upload.single('file'), (req, res) => {
   const { nic } = req.body;
   const file = req.file;
+  const userId = req.user.userId;
 
   if (!nic || !file) return res.json({ status: 'error', message: 'NIC or file missing' });
 
-  const sql = 'INSERT INTO case_documents (user_nic, file_name, file_path) VALUES (?, ?, ?)';
-  db.query(sql, [nic, file.originalname, `/uploads/${file.filename}`], (err) => {
+  const sql = 'INSERT INTO case_documents (owner_id, user_nic, file_name, file_path) VALUES (?, ?, ?, ?)';
+  db.query(sql, [userId, nic, file.originalname, `/uploads/${file.filename}`], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
     res.json({ status: 'success', message: 'Document uploaded successfully' });
   });
@@ -625,17 +949,19 @@ app.post('/api/uploadDocument', authenticateToken, upload.single('file'), (req, 
 
 app.get('/api/getDocuments/:nic', authenticateToken, (req, res) => {
   const { nic } = req.params;
-  const sql = 'SELECT * FROM case_documents WHERE user_nic = ?';
-  db.query(sql, [nic], (err, data) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  const sql = 'SELECT * FROM case_documents WHERE user_nic = ? AND owner_id = ?';
+  db.query(sql, [nic, userId], (err, data) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(data);
   });
 });
 
 app.post('/api/deleteDocument', authenticateToken, (req, res) => {
   const { id, path: filePath } = req.body;
-  const sql = 'DELETE FROM case_documents WHERE id = ?';
-  db.query(sql, [id], (err) => {
+  const userId = req.user.userId;
+  const sql = 'DELETE FROM case_documents WHERE id = ? AND owner_id = ?';
+  db.query(sql, [id, userId], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
 
     // Optional: Delete physical file
@@ -647,21 +973,23 @@ app.post('/api/deleteDocument', authenticateToken, (req, res) => {
 });
 
 app.get('/api/getActivityLogs', authenticateToken, (req, res) => {
+  const userId = req.user.userId;
   const sql = `
     SELECT l.*, p.avatar_url 
     FROM activity_log l 
-    LEFT JOIN user_profiles p ON l.username = p.username 
+    LEFT JOIN user_profiles p ON l.username = p.username AND l.owner_id = p.owner_id
+    WHERE l.owner_id = ?
     ORDER BY l.timestamp DESC LIMIT 500
   `;
-  db.query(sql, (err, data) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(sql, [userId], (err, data) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(data);
   });
 });
 
 app.post('/api/logAction', authenticateToken, (req, res) => {
   const { username, action, details } = req.body;
-  logActivity(username, action, details);
+  logActivity(username, action, details, { userId: req.user.userId });
   res.json({ status: 'success' });
 });
 
@@ -669,9 +997,10 @@ app.post('/api/logAction', authenticateToken, (req, res) => {
 
 // Get Profile
 app.get('/api/getProfile', authenticateToken, (req, res) => {
-  const sql = 'SELECT * FROM user_profiles WHERE username = ?';
-  db.query(sql, [req.user.username], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  const sql = 'SELECT * FROM user_profiles WHERE owner_id = ?';
+  db.query(sql, [userId], (err, results) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     if (results.length > 0) {
       res.json(results[0]);
     } else {
@@ -692,14 +1021,15 @@ app.get('/api/getProfile', authenticateToken, (req, res) => {
 // Update Profile
 app.post('/api/updateProfile', authenticateToken, (req, res) => {
   const { fullname, email, phone, avatar_url } = req.body;
+  const userId = req.user.userId;
   const sql = `
-    INSERT INTO user_profiles (username, fullname, email, phone, avatar_url) 
-    VALUES (?, ?, ?, ?, ?) 
+    INSERT INTO user_profiles (username, owner_id, fullname, email, phone, avatar_url) 
+    VALUES (?, ?, ?, ?, ?, ?) 
     ON DUPLICATE KEY UPDATE fullname = VALUES(fullname), email = VALUES(email), phone = VALUES(phone), avatar_url = VALUES(avatar_url)
   `;
-  db.query(sql, [req.user.username, fullname, email, phone, avatar_url], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    logActivity(req.user.username, 'Profile Update', 'User updated their personal profile');
+  db.query(sql, [req.user.username, userId, fullname, email, phone, avatar_url], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
+    logActivity(req.user.username, 'Profile Update', 'User updated their personal profile', { userId });
     res.json({ status: 'success' });
   });
 });
@@ -707,45 +1037,40 @@ app.post('/api/updateProfile', authenticateToken, (req, res) => {
 // Change Password
 app.post('/api/changePassword', authenticateToken, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
+  const userId = req.user.userId;
 
-  // If editor, check DB
-  if (req.user.role === 'editor') {
-    db.query('SELECT password FROM editors WHERE username = ?', [req.user.username], async (err, results) => {
-      if (err || results.length === 0) return res.status(500).json({ error: 'User not found' });
+  db.query('SELECT password FROM users WHERE id = ?', [userId], async (err, results) => {
+    if (err || results.length === 0) return res.status(500).json({ error: 'User not found' });
 
-      const valid = await bcrypt.compare(currentPassword, results[0].password);
-      if (!valid) return res.json({ status: 'error', message: 'Current password incorrect' });
+    const valid = await bcrypt.compare(currentPassword, results[0].password);
+    if (!valid) return res.json({ status: 'error', message: 'Current password incorrect' });
 
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-      db.query('UPDATE editors SET password = ? WHERE username = ?', [hashedPassword, req.user.username], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        logActivity(req.user.username, 'Password Change', 'User changed their account password');
-        res.json({ status: 'success' });
-      });
+    db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId], (err) => {
+      if (err) return res.status(500).json({ status: 'error', message: err.message });
+      logActivity(req.user.username, 'Password Change', 'User changed their account password', { userId });
+      res.json({ status: 'success' });
     });
-  } else if (req.user.role === 'admin') {
-    // Admin password change (usually from .env, but we can prevent it or handle specifically)
-    res.json({ status: 'error', message: 'Admin password can only be changed via server environment variables' });
-  }
+  });
 });
 
 // Get Login Activity (Last 5)
 app.get('/api/getLoginActivity', authenticateToken, (req, res) => {
-  const sql = 'SELECT * FROM login_history WHERE username = ? ORDER BY timestamp DESC LIMIT 5';
-  db.query(sql, [req.user.username], (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  const sql = 'SELECT * FROM login_history WHERE owner_id = ? ORDER BY timestamp DESC LIMIT 5';
+  db.query(sql, [userId], (err, results) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json(results);
   });
 });
 
-// SMTP Configuration (Admin Only)
+// SMTP Configuration
 app.get('/api/getSMTP', authenticateToken, (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-
-  db.query('SELECT * FROM app_settings WHERE setting_key IN ("smtp_email", "smtp_password")', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  db.query('SELECT * FROM app_settings WHERE owner_id = ? AND setting_key IN ("smtp_email", "smtp_password")', [userId], (err, results) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
 
     const settings = {};
     results.forEach(r => {
@@ -754,26 +1079,24 @@ app.get('/api/getSMTP', authenticateToken, (req, res) => {
 
     res.json({
       email: settings.smtp_email || '',
-      password: settings.smtp_password ? '********' : '' // Don't send real password to frontend for display
+      password: settings.smtp_password ? '********' : ''
     });
   });
 });
 
 app.post('/api/updateSMTP', authenticateToken, (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-
   const { email, password } = req.body;
+  const userId = req.user.userId;
   const encryptedPassword = encrypt(password);
 
   const queries = [
-    { sql: 'INSERT INTO app_settings (setting_key, setting_value, is_encrypted) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', params: ['smtp_email', email, false] }
+    { sql: 'INSERT INTO app_settings (owner_id, setting_key, setting_value, is_encrypted) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', params: [userId, 'smtp_email', email, false] }
   ];
 
   if (password && password !== '********') {
-    queries.push({ sql: 'INSERT INTO app_settings (setting_key, setting_value, is_encrypted) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', params: ['smtp_password', encryptedPassword, true] });
+    queries.push({ sql: 'INSERT INTO app_settings (owner_id, setting_key, setting_value, is_encrypted) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)', params: [userId, 'smtp_password', encryptedPassword, true] });
   }
 
-  // Execute queries
   let count = 0;
   let hasError = false;
   queries.forEach(q => {
@@ -782,7 +1105,7 @@ app.post('/api/updateSMTP', authenticateToken, (req, res) => {
       if (err) hasError = true;
       if (count === queries.length) {
         if (hasError) return res.status(500).json({ status: 'error' });
-        logActivity(req.user.username, 'SMTP Update', 'Admin updated system SMTP settings');
+        logActivity(req.user.username, 'SMTP Update', 'Updated SMTP settings', { userId });
         res.json({ status: 'success' });
       }
     });
@@ -791,15 +1114,13 @@ app.post('/api/updateSMTP', authenticateToken, (req, res) => {
 
 // Test SMTP
 app.post('/api/testSMTP', authenticateToken, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-
   const { email, password } = req.body;
+  const userId = req.user.userId;
   let testPassword = password;
 
   if (password === '********') {
-    // Fetch current encrypted password
     const result = await new Promise((resolve) => {
-      db.query('SELECT setting_value FROM app_settings WHERE setting_key = "smtp_password"', (err, results) => {
+      db.query('SELECT setting_value FROM app_settings WHERE owner_id = ? AND setting_key = "smtp_password"', [userId], (err, results) => {
         if (!err && results.length > 0) resolve(decrypt(results[0].setting_value));
         else resolve(null);
       });
@@ -822,16 +1143,15 @@ app.post('/api/testSMTP', authenticateToken, async (req, res) => {
   }
 });
 
-// Subscription Info (Admin Only)
+// Subscription Info
 app.get('/api/getSubscription', authenticateToken, (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
-
-  db.query('SELECT * FROM subscriptions LIMIT 1', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const userId = req.user.userId;
+  db.query('SELECT * FROM subscriptions WHERE owner_id = ? LIMIT 1', [userId], (err, results) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     if (results.length > 0) {
       res.json(results[0]);
     } else {
-      res.json({ plan_name: 'Professional', renewal_date: '2026-03-26', status: 'Active' });
+      res.json({ plan_name: 'Professional', renewal_date: 'N/A', status: 'Trial' });
     }
   });
 });
@@ -839,37 +1159,36 @@ app.get('/api/getSubscription', authenticateToken, (req, res) => {
 // Update Preferences
 app.post('/api/updatePreferences', authenticateToken, (req, res) => {
   const { notifications, language } = req.body;
+  const userId = req.user.userId;
   const sql = `
-    INSERT INTO user_profiles (username, notifications, language) 
-    VALUES (?, ?, ?) 
+    INSERT INTO user_profiles (username, owner_id, notifications, language) 
+    VALUES (?, ?, ?, ?) 
     ON DUPLICATE KEY UPDATE notifications = VALUES(notifications), language = VALUES(language)
   `;
-  db.query(sql, [req.user.username, JSON.stringify(notifications), language], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+  db.query(sql, [req.user.username, userId, JSON.stringify(notifications), language], (err) => {
+    if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json({ status: 'success' });
   });
 });
 
 app.post('/api/uploadAvatar', authenticateToken, avatarUpload.single('avatar'), (req, res) => {
   if (!req.file) return res.json({ status: 'error', message: 'No file uploaded' });
-
-  // Convert uploaded file buffer to Base64 data URI and store in database
-  // This ensures persistence on cloud platforms (Railway) where filesystem is ephemeral
+  const userId = req.user.userId;
   const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
   const sql = `
-    INSERT INTO user_profiles (username, avatar_url) 
-    VALUES (?, ?) 
+    INSERT INTO user_profiles (username, owner_id, avatar_url) 
+    VALUES (?, ?, ?) 
     ON DUPLICATE KEY UPDATE avatar_url = VALUES(avatar_url)
   `;
 
-  db.query(sql, [req.user.username, base64Image], (err) => {
+  db.query(sql, [req.user.username, userId, base64Image], (err) => {
     if (err) return res.status(500).json({ status: 'error', message: err.message });
     res.json({ status: 'success', avatar_url: base64Image });
   });
 });
 
-// Catch-all: serve React app for any non-API route (SPA support)
+// Catch-all: serve React app
 if (isProduction) {
   const distPath = path.join(__dirname, '../../dist');
   app.use((req, res) => {

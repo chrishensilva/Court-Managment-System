@@ -24,13 +24,11 @@ const Account = () => {
 
     const [loginHistory, setLoginHistory] = useState([]);
 
-    // Admin only SMTP
     const [smtp, setSmtp] = useState({
         email: '',
         password: '********'
     });
 
-    // Admin only Subscription
     const [subscription, setSubscription] = useState({
         plan_name: 'Professional',
         renewal_date: '',
@@ -42,83 +40,85 @@ const Account = () => {
         language: 'English'
     });
 
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
     useEffect(() => {
-        fetchProfile();
-        fetchLoginHistory();
-        if (user?.role === 'admin') {
-            fetchSMTP();
-            fetchSubscription();
-        }
+        const loadAllData = async () => {
+            setIsLoading(true);
+            try {
+                await Promise.all([
+                    fetchProfile(),
+                    fetchLoginHistory(),
+                    fetchSMTP(),
+                    user?.role === 'admin' ? fetchSubscription() : Promise.resolve()
+                ]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadAllData();
     }, [user]);
 
     const fetchProfile = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getProfile`, {
-                credentials: 'include'
-            });
+            const resp = await fetch(`${API_BASE_URL}/getProfile`, { credentials: 'include' });
             const data = await resp.json();
-            if (data) {
+            if (data && !data.error) {
                 setProfile(prev => ({ ...prev, ...data }));
                 if (data.notifications) {
                     try {
-                        const notifs = typeof data.notifications === 'string'
-                            ? JSON.parse(data.notifications)
-                            : data.notifications;
-                        setPreferences(prev => ({ ...prev, notifications: notifs, language: data.language || 'English' }));
+                        const notifs = typeof data.notifications === 'string' ? JSON.parse(data.notifications) : data.notifications;
+                        if (notifs && typeof notifs === 'object') {
+                            setPreferences(prev => ({ 
+                                ...prev, 
+                                notifications: { ...prev.notifications, ...notifs }, 
+                                language: data.language || prev.language 
+                            }));
+                        }
                     } catch (e) {
-                        console.error("Failed to parse notifications", e);
+                        console.error("Failed to parse notifications:", e);
                     }
                 }
             }
         } catch (err) {
-            console.error("Failed to fetch profile", err);
+            console.error("Profile fetch error:", err);
         }
     };
 
     const fetchLoginHistory = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getLoginActivity`, {
-                credentials: 'include'
-            });
+            const resp = await fetch(`${API_BASE_URL}/getLoginActivity`, { credentials: 'include' });
             const data = await resp.json();
-            if (Array.isArray(data)) {
-                setLoginHistory(data);
-            }
+            if (Array.isArray(data)) setLoginHistory(data);
         } catch (err) {
-            console.error("Failed to fetch login history", err);
+            console.error("Login history fetch error:", err);
         }
     };
 
     const fetchSMTP = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getSMTP`, {
-                credentials: 'include'
-            });
+            const resp = await fetch(`${API_BASE_URL}/getSMTP`, { credentials: 'include' });
             const data = await resp.json();
-            if (data && !data.error) {
-                setSmtp(data);
-            }
+            if (data && !data.error) setSmtp(data);
         } catch (err) {
-            console.error("Failed to fetch SMTP", err);
+            console.error("SMTP fetch error:", err);
         }
     };
 
     const fetchSubscription = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getSubscription`, {
-                credentials: 'include'
-            });
+            const resp = await fetch(`${API_BASE_URL}/getSubscription`, { credentials: 'include' });
             const data = await resp.json();
-            if (data && !data.error) {
-                setSubscription(data);
-            }
+            if (data && !data.error) setSubscription(data);
         } catch (err) {
-            console.error("Failed to fetch subscription", err);
+            console.error("Subscription fetch error:", err);
         }
     };
 
     const handleProfileUpdate = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        setIsSaving(true);
         try {
             const resp = await fetch(`${API_BASE_URL}/updateProfile`, {
                 method: 'POST',
@@ -128,20 +128,26 @@ const Account = () => {
             });
             const data = await resp.json();
             if (data.status === 'success') {
-                toast('Profile updated successfully', 'success');
-            } else {
-                toast(data.message || 'Error updating profile', 'error');
+                toast('Profile updated', 'success');
+                return true;
             }
+            toast(data.message || 'Update failed', 'error');
+            return false;
         } catch (err) {
-            toast('Server error', 'error');
+            toast('Connection error', 'error');
+            return false;
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handlePasswordChange = async (e) => {
         e.preventDefault();
-        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-            return toast('Passwords do not match', 'error');
-        }
+        if (!passwordForm.currentPassword) return toast('Current password required', 'error');
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) return toast('Passwords do not match', 'error');
+        if (passwordForm.newPassword.length < 6) return toast('Password too short', 'error');
+
+        setIsSaving(true);
         try {
             const resp = await fetch(`${API_BASE_URL}/changePassword`, {
                 method: 'POST',
@@ -151,18 +157,21 @@ const Account = () => {
             });
             const data = await resp.json();
             if (data.status === 'success') {
-                toast('Password changed successfully', 'success');
+                toast('Password updated', 'success');
                 setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
             } else {
-                toast(data.message || 'Error changing password', 'error');
+                toast(data.message || 'Change failed', 'error');
             }
         } catch (err) {
             toast('Server error', 'error');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleSMTPUpdate = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        setIsSaving(true);
         try {
             const resp = await fetch(`${API_BASE_URL}/updateSMTP`, {
                 method: 'POST',
@@ -172,17 +181,19 @@ const Account = () => {
             });
             const data = await resp.json();
             if (data.status === 'success') {
-                toast('SMTP settings updated', 'success');
-            } else {
-                toast('Error updating SMTP', 'error');
+                toast('SMTP saved', 'success');
+                return true;
             }
+            return false;
         } catch (err) {
-            toast('Server error', 'error');
+            return false;
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const testSMTP = async () => {
-        toast('Testing SMTP connection...', 'info');
+        toast('Testing SMTP...', 'info');
         try {
             const resp = await fetch(`${API_BASE_URL}/testSMTP`, {
                 method: 'POST',
@@ -191,11 +202,8 @@ const Account = () => {
                 body: JSON.stringify(smtp)
             });
             const data = await resp.json();
-            if (data.status === 'success') {
-                toast('SMTP Test Successful!', 'success');
-            } else {
-                toast(`SMTP Test Failed: ${data.message}`, 'error');
-            }
+            if (data.status === 'success') toast('SMTP Connected!', 'success');
+            else toast(`Failed: ${data.message}`, 'error');
         } catch (err) {
             toast('Server error', 'error');
         }
@@ -211,8 +219,20 @@ const Account = () => {
                 body: JSON.stringify(newPrefs)
             });
         } catch (err) {
-            console.error("Failed to update preferences", err);
+            console.error("Preferences sync error:", err);
         }
+    };
+
+    const handleSaveAll = async () => {
+        setIsSaving(true);
+        const results = await Promise.all([
+            handleProfileUpdate(),
+            user?.role === 'admin' ? handleSMTPUpdate() : Promise.resolve(true)
+        ]);
+        if (results.every(r => r)) {
+            toast('All changes saved successfully', 'success');
+        }
+        setIsSaving(false);
     };
 
     const handleAvatarChange = async (e) => {
@@ -222,6 +242,7 @@ const Account = () => {
         const formData = new FormData();
         formData.append('avatar', file);
 
+        toast('Uploading picture...', 'info');
         try {
             const resp = await fetch(`${API_BASE_URL}/uploadAvatar`, {
                 method: 'POST',
@@ -230,24 +251,43 @@ const Account = () => {
             });
             const data = await resp.json();
             if (data.status === 'success') {
-                setProfile({ ...profile, avatar_url: data.avatar_url });
-                toast('Profile picture updated', 'success');
+                setProfile(prev => ({ ...prev, avatar_url: data.avatar_url }));
+                toast('Picture updated', 'success');
             } else {
                 toast(data.message || 'Upload failed', 'error');
             }
         } catch (err) {
-            toast('Server error during upload', 'error');
+            toast('Upload error', 'error');
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="account-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+                <div className="loading-spinner"></div>
+                <p>Loading your account details...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="account-container">
             <div className="account-header">
-                <h1>My Account</h1>
-                <p>Manage your profile, security, and preferences.</p>
+                <div>
+                    <h1>My Account</h1>
+                    <p>Manage your profile, security, and preferences.</p>
+                </div>
+                <button
+                    className="btn-primary"
+                    onClick={handleSaveAll}
+                    disabled={isSaving}
+                    style={{ padding: '0.8rem 2rem', fontSize: '1rem', width: 'auto' }}
+                >
+                    {isSaving ? 'Saving...' : 'Save All Settings'}
+                </button>
             </div>
 
-            <div className="account-grid">
+            <div className={`account-grid ${isSaving ? 'saving-fade' : ''}`}>
                 {/* Profile Card */}
                 <div className="account-card card-1">
                     <div className="card-title">
@@ -266,7 +306,7 @@ const Account = () => {
                                 <label>Full Name</label>
                                 <input
                                     type="text"
-                                    value={profile.fullname}
+                                    value={profile.fullname || ''}
                                     onChange={(e) => setProfile({ ...profile, fullname: e.target.value })}
                                     placeholder="Enter full name"
                                 />
@@ -275,7 +315,7 @@ const Account = () => {
                                 <label>Email Address</label>
                                 <input
                                     type="email"
-                                    value={profile.email}
+                                    value={profile.email || ''}
                                     onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                                     placeholder="email@example.com"
                                 />
@@ -284,12 +324,14 @@ const Account = () => {
                                 <label>Phone Number</label>
                                 <input
                                     type="text"
-                                    value={profile.phone}
+                                    value={profile.phone || ''}
                                     onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                                     placeholder="+94 77 123 4567"
                                 />
                             </div>
-                            <button type="submit" className="btn-primary">Save Changes</button>
+                            <button type="submit" className="btn-primary" disabled={isSaving}>
+                                {isSaving ? '...' : 'Save Profile'}
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -307,6 +349,7 @@ const Account = () => {
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 placeholder="••••••••"
+                                required
                             />
                         </div>
                         <div className="form-group">
@@ -315,7 +358,8 @@ const Account = () => {
                                 type="password"
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                placeholder="••••••••"
+                                placeholder="Min 6 characters"
+                                required
                             />
                         </div>
                         <div className="form-group">
@@ -324,10 +368,13 @@ const Account = () => {
                                 type="password"
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                placeholder="••••••••"
+                                placeholder="Confirm new password"
+                                required
                             />
                         </div>
-                        <button type="submit" className="btn-primary">Update Password</button>
+                        <button type="submit" className="btn-primary" disabled={isSaving}>
+                            {isSaving ? 'Updating...' : 'Update Password'}
+                        </button>
                     </form>
 
                     <div style={{ marginTop: '2rem' }}>
@@ -355,13 +402,15 @@ const Account = () => {
                                     <tr key={idx}>
                                         <td>{new Date(log.timestamp).toLocaleString()}</td>
                                         <td>
-                                            {log.ip_address}
-                                            <span className="device-info">{log.device_type?.substring(0, 30)}...</span>
+                                            <div style={{ fontWeight: '600' }}>{log.ip_address}</div>
+                                            <div className="device-info" title={log.device_type}>
+                                                {log.device_type?.substring(0, 30)}...
+                                            </div>
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="2" style={{ textAlign: 'center', color: '#888' }}>No activity found</td>
+                                        <td colSpan="2" style={{ textAlign: 'center', color: '#888', padding: '1rem' }}>No activity found</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -369,40 +418,42 @@ const Account = () => {
                     </div>
                 </div>
 
-                {/* SMTP Card (Admin Only) */}
-                {user?.role === 'admin' && (
-                    <div className="account-card card-3">
-                        <div className="card-title">
-                            <span className="icon">📧</span> Automated Email (Admin)
-                        </div>
-                        <div className="smtp-guide">
-                            <strong>Setup Guide:</strong> Use the firm's Gmail to send notifications. <br />
-                            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ fontWeight: '600' }}>→ Generate 16-digit App Password</a>
-                        </div>
-                        <form onSubmit={handleSMTPUpdate}>
-                            <div className="form-group">
-                                <label>Sender Gmail Address</label>
-                                <input
-                                    type="email"
-                                    value={smtp.email}
-                                    onChange={(e) => setSmtp({ ...smtp, email: e.target.value })}
-                                    placeholder="your-firm@gmail.com"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Gmail App Password</label>
-                                <input
-                                    type="password"
-                                    value={smtp.password}
-                                    onChange={(e) => setSmtp({ ...smtp, password: e.target.value })}
-                                    placeholder="•••• •••• •••• ••••"
-                                />
-                            </div>
-                            <button type="submit" className="btn-primary">Save SMTP Configuration</button>
-                            <button type="button" className="btn-secondary" onClick={testSMTP}>Test Connection</button>
-                        </form>
+                {/* SMTP Card */}
+                <div className="account-card card-3">
+                    <div className="card-title">
+                        <span className="icon">📧</span> Automated Email
                     </div>
-                )}
+                    <div className="smtp-guide">
+                        <strong>Setup Guide:</strong> Use a Gmail account to send notifications automatically. <br />
+                        <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: '600' }}>→ Generate 16-digit App Password</a>
+                    </div>
+                    <form onSubmit={handleSMTPUpdate}>
+                        <div className="form-group">
+                            <label>Sender Gmail Address</label>
+                            <input
+                                type="email"
+                                value={smtp.email}
+                                onChange={(e) => setSmtp({ ...smtp, email: e.target.value })}
+                                placeholder="your-email@gmail.com"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Gmail App Password</label>
+                            <input
+                                type="password"
+                                value={smtp.password}
+                                onChange={(e) => setSmtp({ ...smtp, password: e.target.value })}
+                                placeholder="•••• •••• •••• ••••"
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button type="submit" className="btn-primary" disabled={isSaving} style={{ flex: 2 }}>
+                                {isSaving ? '...' : 'Save SMTP'}
+                            </button>
+                            <button type="button" className="btn-secondary" onClick={testSMTP} style={{ flex: 1 }}>Test</button>
+                        </div>
+                    </form>
+                </div>
 
                 {/* Subscription Card (Admin Only) */}
                 {user?.role === 'admin' && (
@@ -419,8 +470,8 @@ const Account = () => {
                                 <span style={{ color: '#666' }}>Renewal Date:</span>
                                 <span style={{ fontWeight: '600' }}>{subscription.renewal_date ? new Date(subscription.renewal_date).toLocaleDateString() : 'N/A'}</span>
                             </div>
-                            <button className="btn-secondary">View Invoice Archive</button>
-                            <button className="btn-secondary" style={{ marginTop: '0.5rem' }}>Update Payment Method</button>
+                            <button className="btn-secondary" disabled>View Invoice Archive (v1.1)</button>
+                            <button className="btn-secondary" style={{ marginTop: '0.5rem' }} disabled>Update Payment Method</button>
                         </div>
                     </div>
                 )}
@@ -432,9 +483,9 @@ const Account = () => {
                     </div>
 
                     {user?.role === 'editor' && (
-                        <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f0f4f8', borderRadius: '8px' }}>
-                            <h4 style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#2c5282', fontWeight: '700' }}>PERMISSION SUMMARY</h4>
-                            <ul style={{ fontSize: '0.8rem', color: '#4a5568', paddingLeft: '1.2rem', margin: 0 }}>
+                        <div style={{ marginBottom: '2rem', padding: '1rem', background: 'var(--bg-main)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <h4 style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '700' }}>PERMISSION SUMMARY</h4>
+                            <ul style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '1.2rem', margin: 0 }}>
                                 {user.permissions?.map((p, i) => (
                                     <li key={i} style={{ marginBottom: '0.2rem' }}>Access to: {p.charAt(0).toUpperCase() + p.slice(1)}</li>
                                 ))}

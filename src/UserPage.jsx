@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
@@ -7,6 +8,7 @@ import "./UserPage.css";
 function UserPage() {
   const { user, hasPermission, logAction } = useAuth();
   const { toast, confirm } = useToast();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -36,6 +38,11 @@ function UserPage() {
         console.error(err);
         setUsers([]);
       });
+  };
+
+  // Edit case — navigate to AddUser form with row data
+  const editCase = (row) => {
+    navigate("/adduser", { state: { editData: row } });
   };
 
   // Delete user
@@ -248,7 +255,14 @@ function UserPage() {
                     </button>
                   </td>
 
-                  <td>
+                  <td style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                    <button
+                      className="btn-small"
+                      onClick={() => editCase(u)}
+                      style={{ background: "#0d6efd", color: "#fff" }}
+                    >
+                      Edit
+                    </button>
                     <button
                       className="delete-btn"
                       onClick={() => deleteUser(u.nic)}

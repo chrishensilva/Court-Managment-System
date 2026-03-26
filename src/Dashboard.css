@@ -194,11 +194,15 @@
   gap: 1.5rem;
   align-items: start;
 }
-
 @media (max-width: 1024px) {
   .bottom-section {
     grid-template-columns: 1fr;
   }
+}
+
+.chart-container {
+  min-height: 400px;
+  width: 100%;
 }
 
 .graph-box,

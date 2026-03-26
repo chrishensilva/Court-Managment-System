@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Table.css";
 import API_BASE_URL from "./config";
 import { useAuth } from "./AuthContext";
@@ -12,6 +13,7 @@ function Lawyers() {
   const limit = 10;
   const { user, logAction } = useAuth();
   const { toast, confirm } = useToast();
+  const navigate = useNavigate();
 
   // Load data
   const loadData = () => {
@@ -35,7 +37,12 @@ function Lawyers() {
 
   useEffect(() => {
     loadData();
-  }, [page]); // Reload when page changes
+  }, [page]);
+
+  // Edit lawyer — navigate to AddLawyer form with row data
+  const editLawyer = (row) => {
+    navigate("/addlawyer", { state: { editData: row } });
+  };
 
   // Delete lawyer
   const deleteLawyer = async (nic) => {
@@ -101,7 +108,14 @@ function Lawyers() {
                 <td>{row.email}</td>
                 <td>{row.contact}</td>
                 <td>{row.note}</td>
-                <td>
+                <td style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  <button
+                    className="btn-small"
+                    onClick={() => editLawyer(row)}
+                    style={{ background: "#0d6efd", color: "#fff" }}
+                  >
+                    Edit
+                  </button>
                   <button
                     className="delete-btn"
                     onClick={() => deleteLawyer(row.nic)}

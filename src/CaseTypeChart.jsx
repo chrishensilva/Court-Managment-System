@@ -28,7 +28,8 @@ export default function CaseTypeChart({ refresh }) {
     <div className="graph-box">
       <h3>Court Type Distribution</h3>
 
-      <ResponsiveContainer width="100%" height="85%">
+      <div style={{ width: '100%', height: '300px', minWidth: 0 }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <PieChart>
           <Pie
             data={data}
@@ -49,6 +50,7 @@ export default function CaseTypeChart({ refresh }) {
           <Legend verticalAlign="bottom" iconType="circle" />
         </PieChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

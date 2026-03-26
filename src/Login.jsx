@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./ToastContext";
 import API_BASE_URL from "./config";
@@ -66,6 +66,10 @@ function Login() {
           <button disabled={loading}>
             {loading ? "Logging in..." : "Login"}
           </button>
+
+          <p className="auth-footer">
+            Don't have an account? <Link to="/register">Register now</Link>
+          </p>
         </form>
       </div>
     </div>

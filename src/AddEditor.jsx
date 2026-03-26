@@ -113,16 +113,31 @@ function AddEditor() {
 
                     <div style={{ marginTop: '20px' }}>
                         <h3>Set Permissions</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px', marginTop: '15px' }}>
                             {Object.keys(permissions).map(key => (
-                                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                <label key={key} style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '10px', 
+                                    cursor: 'pointer', 
+                                    margin: '0', 
+                                    padding: '8px 12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    background: 'var(--bg-main)',
+                                    border: '1px solid var(--border)',
+                                    userSelect: 'none',
+                                    transition: 'all 0.2s ease'
+                                }}>
                                     <input
                                         type="checkbox"
                                         name={key}
                                         checked={permissions[key]}
                                         onChange={handleCheckboxChange}
+                                        style={{ margin: '0', width: '16px', height: '16px', cursor: 'pointer' }}
                                     />
-                                    {key.charAt(0).toUpperCase() + key.slice(1).replace('adduser', 'Add Case')}
+                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '500' }}>
+                                        {key === 'adduser' ? 'Add Case' : key.charAt(0).toUpperCase() + key.slice(1)}
+                                    </span>
                                 </label>
                             ))}
                         </div>

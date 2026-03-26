@@ -10,6 +10,7 @@ import GenerateReport from "./GenerateReport";
 import AddEditor from "./AddEditor";
 import ActivityLogs from "./ActivityLogs";
 import Login from "./Login";
+import Register from "./Register";
 import Account from "./Account";
 import { useAuth } from "./AuthContext";
 
@@ -22,8 +23,9 @@ function App() {
   return (
     <HashRouter>
       <Routes>
-        {/* Login Route */}
+        {/* Authentication Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* Protected Dashboard Routes */}
         <Route
