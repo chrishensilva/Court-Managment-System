@@ -447,8 +447,12 @@ const getDynamicTransporter = async (userId) => {
           resolve(null);
         } else {
           resolve(nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user: settings.smtp_email, pass: settings.smtp_password }
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false, // TLS
+            auth: { user: settings.smtp_email, pass: settings.smtp_password },
+            connectionTimeout: 15000, // 15s
+            greetingTimeout: 15000
           }));
         }
       }
@@ -1172,8 +1176,12 @@ app.post('/api/testSMTP', authenticateToken, async (req, res) => {
   if (!email || !testPassword) return res.json({ status: 'error', message: 'Missing credentials' });
 
   const testTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: email, pass: testPassword }
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // TLS
+    auth: { user: email, pass: testPassword },
+    connectionTimeout: 15000, // 15s
+    greetingTimeout: 15000
   });
 
   try {
