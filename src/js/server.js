@@ -93,9 +93,12 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-// Serve React frontend in production
-if (isProduction) {
-  const distPath = path.join(__dirname, '../../dist');
+// Serve React frontend — always serve dist/ if it exists (production or not)
+const distPath = path.join(__dirname, '../../dist');
+const distExists = fs.existsSync(distPath);
+console.log(`[Static] dist path: ${distPath}`);
+console.log(`[Static] dist exists: ${distExists}`);
+if (distExists) {
   app.use(express.static(distPath));
 }
 
@@ -1196,11 +1199,15 @@ app.post('/api/uploadAvatar', authenticateToken, avatarUpload.single('avatar'), 
   });
 });
 
-// Catch-all: serve React app
-if (isProduction) {
-  const distPath = path.join(__dirname, '../../dist');
+// Catch-all: serve React app for any non-API route
+if (distExists) {
   app.use((req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).json({ error: 'index.html not found in dist. Build may have failed.' });
+    }
   });
 }
 
