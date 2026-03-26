@@ -61,9 +61,10 @@ app.use(cors({
       'http://localhost:5177',
       process.env.VITE_FRONTEND_URL
     ];
-    if (!origin || allowed.includes(origin) || origin.startsWith('http://localhost:')) {
+    if (!origin || allowed.includes(origin) || origin.startsWith('http://localhost:') || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
+      console.log(`[CORS Blocked] Origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
