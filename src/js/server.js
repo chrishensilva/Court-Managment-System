@@ -11,6 +11,7 @@ import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
 import crypto from "crypto";
+import compression from "compression";
 import { db } from "./db.js";
 
 dotenv.config();
@@ -51,6 +52,7 @@ function decrypt(text) {
   }
 }
 
+app.use(compression()); // Enable Gzip/Brotli compression for all responses
 app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
@@ -70,7 +72,7 @@ app.use(cors({
   },
   credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' })); // Increased limit for document synchronization
 app.use(cookieParser());
 
 // Rate limiting for login
@@ -100,7 +102,12 @@ const distExists = fs.existsSync(distPath);
 console.log(`[Static] dist path: ${distPath}`);
 console.log(`[Static] dist exists: ${distExists}`);
 if (distExists) {
-  app.use(express.static(distPath));
+  // Use aggressive caching for static assets (js, css, images)
+  app.use(express.static(distPath, {
+    maxAge: '7d', // 7 day cache for static assets
+    immutable: true,
+    index: false // Let our catch-all handle /
+  }));
 }
 
 // --- DATABASE INITIALIZATION (MySQL) ---
@@ -896,7 +903,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.post('/api/login', loginLimiter, async (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
 
   const handleSuccessfulLogin = (user) => {
@@ -1241,12 +1248,13 @@ app.post('/api/uploadAvatar', authenticateToken, avatarUpload.single('avatar'), 
 
 // Catch-all: serve React app for any non-API route
 if (distExists) {
-  app.use((req, res) => {
-    const indexPath = path.join(distPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
+  app.get('*', (req, res) => {
+    // Only catch-all if it's not an API call
+    if (!req.path.startsWith('/api')) {
+      const indexPath = path.join(distPath, 'index.html');
       res.sendFile(indexPath);
     } else {
-      res.status(404).json({ error: 'index.html not found in dist. Build may have failed.' });
+      res.status(404).json({ error: 'API route not found' });
     }
   });
 }
