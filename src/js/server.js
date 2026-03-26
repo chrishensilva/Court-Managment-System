@@ -250,15 +250,38 @@ const initMySQL = () => {
             name VARCHAR(255) NOT NULL,
             email VARCHAR(255),
             number VARCHAR(20),
+            address TEXT,
+            lawyer1 VARCHAR(255),
+            lawyer2 VARCHAR(255),
+            lawyer3 VARCHAR(255),
             last_date VARCHAR(255),
             next_date VARCHAR(255),
             note TEXT,
+            casetype VARCHAR(255),
             status VARCHAR(50) DEFAULT 'ongoing',
             PRIMARY KEY (owner_id, nic)
         )
     `;
   db.query(createUsersDataTable, (err) => {
     if (err) console.error("Error creating userdata table:", err);
+    else {
+      // Auto-migrate to add new columns if they don't exist
+      const alterQueries = [
+        "ALTER TABLE userdata ADD COLUMN address TEXT",
+        "ALTER TABLE userdata ADD COLUMN lawyer1 VARCHAR(255)",
+        "ALTER TABLE userdata ADD COLUMN lawyer2 VARCHAR(255)",
+        "ALTER TABLE userdata ADD COLUMN lawyer3 VARCHAR(255)",
+        "ALTER TABLE userdata ADD COLUMN casetype VARCHAR(255)"
+      ];
+      alterQueries.forEach(query => {
+        db.query(query, (err) => {
+          // Ignore ER_DUP_FIELDNAME (Code 1060) since the columns might already exist
+          if (err && err.code !== 'ER_DUP_FIELDNAME') {
+            console.error("Migration error for userdata:", err.message);
+          }
+        });
+      });
+    }
   });
 
   // Create case_assignments table
@@ -651,10 +674,10 @@ app.post('/api/updateLawyer', authenticateToken, (req, res) => {
 
 // Add user (Client/Case)
 app.post('/api/addUser', authenticateToken, (req, res) => {
-  const { name, nic, email, number, last_date, next_date, note } = req.body;
+  const { name, nic, email, number, address, lawyer1, lawyer2, lawyer3, last_date, next_date, note, casetype } = req.body;
   const userId = req.user.userId;
-  const sql = 'INSERT INTO userdata (owner_id, name, nic, email, number, last_date, next_date, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-  db.query(sql, [userId, name, nic, email, number, last_date, next_date, note], (err) => {
+  const sql = 'INSERT INTO userdata (owner_id, name, nic, email, number, address, lawyer1, lawyer2, lawyer3, last_date, next_date, note, casetype) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+  db.query(sql, [userId, name, nic, email, number, address || null, lawyer1 || null, lawyer2 || null, lawyer3 || null, last_date, next_date, note, casetype || null], (err) => {
     if (err) return res.json({ status: 'error', message: err.message });
     logActivity(req.user.username, 'Add Client', `Created new case for: ${name} (${nic})`, { userId: req.user.userId });
     res.json({ status: 'success' });
