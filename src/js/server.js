@@ -469,7 +469,8 @@ const getDynamicTransporter = async (userId) => {
             secure: false, // TLS
             auth: { user: settings.smtp_email, pass: settings.smtp_password },
             connectionTimeout: 15000, // 15s
-            greetingTimeout: 15000
+            greetingTimeout: 15000,
+            family: 4 // Force IPv4 — Render free tier blocks IPv6 outbound
           }));
         }
       }
@@ -1202,7 +1203,8 @@ app.post('/api/testSMTP', authenticateToken, async (req, res) => {
     secure: false, // TLS
     auth: { user: email, pass: testPassword },
     connectionTimeout: 15000, // 15s
-    greetingTimeout: 15000
+    greetingTimeout: 15000,
+    family: 4 // Force IPv4 — Render free tier blocks IPv6 outbound
   });
 
   try {
