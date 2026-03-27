@@ -1,4 +1,7 @@
-/* Dashboard Layout */
+/* ========================================
+   DASHBOARD LAYOUT - Fully Responsive
+   ======================================== */
+
 .dashboard-container {
   width: 100%;
   min-height: 100vh;
@@ -7,6 +10,7 @@
   flex-direction: column;
 }
 
+/* --- Top Navigation Bar --- */
 .top-nav {
   height: 4rem;
   background: var(--bg-surface);
@@ -26,6 +30,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-width: 0; /* allow truncation */
 }
 
 .menu-toggle {
@@ -38,6 +43,7 @@
   padding: 0.5rem;
   border-radius: var(--radius-md);
   transition: background var(--transition-fast);
+  flex-shrink: 0;
 }
 
 .menu-toggle:hover {
@@ -58,44 +64,29 @@
   width: 28px;
   height: 28px;
   object-fit: contain;
+  flex-shrink: 0;
 }
 
-/* Main Body Layout */
+/* --- Body Layout --- */
 .body-wrapper {
   display: flex;
   flex: 1;
   overflow: hidden;
-  /* Prevent double scrollbars */
 }
-
-/* Sidebar is handled by its own component/CSS */
 
 .main-body {
   flex: 1;
   padding: 2rem;
   overflow-y: auto;
   height: calc(100vh - 4rem);
+  min-width: 0; /* prevents flex overflow */
 }
 
-@media (max-width: 768px) {
-  .menu-toggle {
-    display: block;
-  }
-
-  .main-body {
-    padding: 1.25rem;
-  }
-
-  .nav-title {
-    font-size: 1rem;
-  }
-}
-
-/* Cards Grid */
+/* --- Stat Cards Grid --- */
 .card-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
   margin-bottom: 2rem;
   animation: fadeIn 0.4s ease-out;
 }
@@ -103,7 +94,7 @@
 .dash-card {
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -121,7 +112,7 @@
 }
 
 .dash-card h3 {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
   color: var(--text-main);
@@ -130,7 +121,7 @@
 
 .dash-card p,
 .dash-card span {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
   font-weight: 500;
   z-index: 1;
@@ -145,63 +136,29 @@
   width: 48px;
   height: 48px;
   opacity: 0.15;
-  color: currentColor;
   pointer-events: none;
 }
 
-/* Card Variants - Using gradients or solid colors with overlays */
-.dash-card.blue {
-  background: linear-gradient(135deg, var(--bg-surface) 0%, #eff6ff 100%);
-  border-left: 4px solid var(--primary);
-}
+/* Card Colour Variants */
+.dash-card.blue  { background: linear-gradient(135deg, var(--bg-surface) 0%, #eff6ff 100%); border-left: 4px solid var(--primary); }
+.dash-card.blue h3  { color: var(--primary); }
+.dash-card.green { background: linear-gradient(135deg, var(--bg-surface) 0%, #f0fdf4 100%); border-left: 4px solid var(--success); }
+.dash-card.green h3 { color: var(--success); }
+.dash-card.yellow{ background: linear-gradient(135deg, var(--bg-surface) 0%, #fffbeb 100%); border-left: 4px solid var(--warning); }
+.dash-card.yellow h3{ color: var(--warning); }
+.dash-card.red   { background: linear-gradient(135deg, var(--bg-surface) 0%, #fef2f2 100%); border-left: 4px solid var(--danger); }
+.dash-card.red h3   { color: var(--danger); }
 
-.dash-card.blue h3 {
-  color: var(--primary);
-}
-
-.dash-card.green {
-  background: linear-gradient(135deg, var(--bg-surface) 0%, #f0fdf4 100%);
-  border-left: 4px solid var(--success);
-}
-
-.dash-card.green h3 {
-  color: var(--success);
-}
-
-.dash-card.yellow {
-  background: linear-gradient(135deg, var(--bg-surface) 0%, #fffbeb 100%);
-  border-left: 4px solid var(--warning);
-}
-
-.dash-card.yellow h3 {
-  color: var(--warning);
-}
-
-.dash-card.red {
-  background: linear-gradient(135deg, var(--bg-surface) 0%, #fef2f2 100%);
-  border-left: 4px solid var(--danger);
-}
-
-.dash-card.red h3 {
-  color: var(--danger);
-}
-
-
-/* Bottom Section */
+/* --- Bottom Section (Chart + Todo) --- */
 .bottom-section {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
   align-items: start;
 }
-@media (max-width: 1024px) {
-  .bottom-section {
-    grid-template-columns: 1fr;
-  }
-}
 
 .chart-container {
-  min-height: 400px;
+  min-height: 350px;
   width: 100%;
 }
 
@@ -238,4 +195,94 @@
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
+}
+
+/* ========================================
+   RESPONSIVE BREAKPOINTS
+   ======================================== */
+
+/* Tablet & below — show hamburger, mobile sidebar */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: block;
+  }
+
+  .main-body {
+    padding: 1rem;
+  }
+
+  .nav-title {
+    font-size: 0.95rem;
+  }
+
+  .card-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .dash-card h3 {
+    font-size: 1.5rem;
+  }
+
+  .bottom-section {
+    grid-template-columns: 1fr;
+  }
+
+  .graph-box,
+  .todo-box {
+    height: 320px;
+  }
+
+  .chart-container {
+    min-height: 280px;
+  }
+}
+
+/* Mobile phones */
+@media (max-width: 480px) {
+  .main-body {
+    padding: 0.75rem;
+  }
+
+  .card-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .dash-card {
+    padding: 1rem;
+  }
+
+  .dash-card h3 {
+    font-size: 1.25rem;
+  }
+
+  .card-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .graph-box,
+  .todo-box {
+    height: auto;
+    min-height: 280px;
+  }
+}
+
+/* Large screens — sidebar always visible */
+@media (min-width: 769px) {
+  .card-row {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+}
+
+/* Overlay when mobile sidebar is open */
+@media (max-width: 768px) {
+  .dashboard-container.sidebar-open::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 35;
+  }
 }
