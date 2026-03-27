@@ -28,6 +28,7 @@ function Login() {
       const data = await res.json();
 
       if (data.status === "success") {
+        if (data.token) localStorage.setItem("token", data.token);
         setAuth(data.user);
         navigate("/");
       } else {

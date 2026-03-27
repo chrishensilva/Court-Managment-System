@@ -21,6 +21,7 @@ export default function TodoApp() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: "include",
         body: JSON.stringify({ task, date, time }),
@@ -50,6 +51,7 @@ export default function TodoApp() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: "include",
         body: JSON.stringify({ id }),
@@ -74,7 +76,10 @@ export default function TodoApp() {
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/getTodos`, {
-      credentials: "include"
+      credentials: "include",
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then((res) => res.json())
       .then((data) => {

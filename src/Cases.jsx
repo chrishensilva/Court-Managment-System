@@ -16,7 +16,10 @@ function Cases() {
   // Load lawyers
   const loadLawyers = async () => {
     const res = await fetch(`${API_BASE_URL}/getLawyers?limit=100`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     });
     const result = await res.json();
     if (result && Array.isArray(result.data)) {
@@ -29,7 +32,10 @@ function Cases() {
   // Load users with cases
   const loadUsers = async () => {
     const res = await fetch(`${API_BASE_URL}/getUserCases`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     });
     const data = await res.json();
     if (Array.isArray(data)) {
@@ -63,7 +69,10 @@ function Cases() {
     try {
       const res = await fetch(`${API_BASE_URL}/assignLawyer`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         credentials: 'include',
         body: JSON.stringify({ nic, lawyer, sendEmail }),
       });
@@ -97,7 +106,10 @@ function Cases() {
     try {
       const res = await fetch(`${API_BASE_URL}/updateStatus`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         credentials: 'include',
         body: JSON.stringify({ nic, status }),
       });

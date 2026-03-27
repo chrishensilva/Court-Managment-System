@@ -16,7 +16,10 @@ export default function CaseTypeChart({ refresh }) {
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/getCaseStats`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then((res) => res.json())
       .then((result) => setData(result))

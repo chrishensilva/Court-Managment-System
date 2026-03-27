@@ -13,11 +13,16 @@ export function AuthProvider({ children }) {
     const verifyUser = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/verifyToken`, {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         });
         const data = await res.json();
         if (data.status === 'success') {
           setUser(data.user);
+        } else {
+          localStorage.removeItem('token');
         }
       } catch (err) {
         console.error("Token verification failed:", err);
@@ -36,8 +41,12 @@ export function AuthProvider({ children }) {
     try {
       await fetch(`${API_BASE_URL}/logout`, {
         method: "POST",
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
       });
+      localStorage.removeItem('token');
       setUser(null);
     } catch (err) {
       console.error("Logout failed:", err);
@@ -55,7 +64,10 @@ export function AuthProvider({ children }) {
     try {
       await fetch(`${API_BASE_URL}/logAction`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem('token')}`
+        },
         credentials: 'include',
         body: JSON.stringify({ username: user.username, action, details }),
       });

@@ -25,7 +25,10 @@ function AddEditor() {
     const loadEditors = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/getEditors`, {
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
             });
             const data = await res.json();
             if (Array.isArray(data)) {
@@ -57,7 +60,10 @@ function AddEditor() {
 
         const res = await fetch(`${API_BASE_URL}/addEditor`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
             credentials: 'include',
             body: JSON.stringify({ username, password, permissions: selectedPermissions }),
         });
@@ -79,7 +85,10 @@ function AddEditor() {
         if (!confirmed) return;
         await fetch(`${API_BASE_URL}/deleteEditor`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
             credentials: 'include',
             body: JSON.stringify({ id }),
         });

@@ -18,7 +18,10 @@ function GenerateReport() {
         setError(null);
         try {
             const res = await fetch(`${API_BASE_URL}/getReportData`, {
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
             });
 
             if (!res.ok) {

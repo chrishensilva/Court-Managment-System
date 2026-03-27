@@ -34,7 +34,12 @@ function AddUser({ onSuccess }) {
 
   // Fetch lawyers list
   useEffect(() => {
-    fetch(`${API_BASE_URL}/getLawyers`, { credentials: "include" })
+    fetch(`${API_BASE_URL}/getLawyers`, { 
+      credentials: "include",
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
       .then((res) => res.json())
       .then((data) => setLawyers(data.data || []))
       .catch((err) => console.error(err));
@@ -79,7 +84,10 @@ function AddUser({ onSuccess }) {
 
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
       credentials: "include",
       body: JSON.stringify(form),
     });

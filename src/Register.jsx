@@ -36,6 +36,7 @@ function Register() {
 
       if (data.status === "success") {
         toast("Registration successful!", "success");
+        if (data.token) localStorage.setItem("token", data.token);
         setAuth(data.user);
         navigate("/");
       } else {

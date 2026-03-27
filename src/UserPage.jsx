@@ -23,7 +23,10 @@ function UserPage() {
   // Load users
   const loadUsers = () => {
     fetch(`${API_BASE_URL}/getUsers?search=${search}&page=${page}&limit=${limit}`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then((res) => res.json())
       .then((data) => {
@@ -56,7 +59,10 @@ function UserPage() {
 
     fetch(`${API_BASE_URL}/deleteUser`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
       credentials: 'include',
       body: JSON.stringify({ nic }),
     })
@@ -81,7 +87,10 @@ function UserPage() {
     try {
       const res = await fetch(`${API_BASE_URL}/updateStatus`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         credentials: 'include',
         body: JSON.stringify({ nic, status }),
       });
@@ -106,7 +115,10 @@ function UserPage() {
 
   const fetchDocuments = (nic) => {
     fetch(`${API_BASE_URL}/getDocuments/${nic}`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then(res => res.json())
       .then(data => setDocuments(data));
@@ -129,6 +141,9 @@ function UserPage() {
       const res = await fetch(`${API_BASE_URL}/uploadDocument`, {
         method: "POST",
         credentials: "include",
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: formData
       });
       const data = await res.json();
@@ -148,7 +163,10 @@ function UserPage() {
   const deleteDocument = (id, path) => {
     fetch(`${API_BASE_URL}/deleteDocument`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
       credentials: "include",
       body: JSON.stringify({ id, path })
     })

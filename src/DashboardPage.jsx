@@ -20,7 +20,10 @@ function DashboardPage() {
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/dashboard_counts`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then((res) => res.json())
       .then((data) => {
@@ -29,7 +32,10 @@ function DashboardPage() {
       .catch((err) => console.error("Error fetching dashboard counts:", err));
 
     fetch(`${API_BASE_URL}/getReportData`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then((res) => res.json())
       .then((data) => {

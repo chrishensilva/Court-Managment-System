@@ -18,7 +18,10 @@ function Lawyers() {
   // Load data
   const loadData = () => {
     fetch(`${API_BASE_URL}/getLawyers?search=${search}&page=${page}&limit=${limit}`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
     })
       .then((res) => res.json())
       .then((data) => {
@@ -55,7 +58,10 @@ function Lawyers() {
 
     fetch(`${API_BASE_URL}/deleteLawyer`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
       credentials: 'include',
       body: JSON.stringify({ nic }),
     })

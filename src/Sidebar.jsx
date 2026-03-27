@@ -11,11 +11,11 @@ import newuser from "./assets/Dash/newclient.png";
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
-  const { setAuth, hasPermission, user } = useAuth();
+  const { logout, hasPermission, user } = useAuth();
   const [active, setActive] = useState("/");
 
   function handleLogout() {
-    setAuth(null);
+    logout();
     navigate("/login");
     onClose();
   }

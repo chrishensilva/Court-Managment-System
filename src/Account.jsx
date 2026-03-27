@@ -62,7 +62,12 @@ const Account = () => {
 
     const fetchProfile = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getProfile`, { credentials: 'include' });
+            const resp = await fetch(`${API_BASE_URL}/getProfile`, { 
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
             const data = await resp.json();
             if (data && !data.error) {
                 setProfile(prev => ({ ...prev, ...data }));
@@ -88,7 +93,12 @@ const Account = () => {
 
     const fetchLoginHistory = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getLoginActivity`, { credentials: 'include' });
+            const resp = await fetch(`${API_BASE_URL}/getLoginActivity`, { 
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
             const data = await resp.json();
             if (Array.isArray(data)) setLoginHistory(data);
         } catch (err) {
@@ -98,7 +108,12 @@ const Account = () => {
 
     const fetchSMTP = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getSMTP`, { credentials: 'include' });
+            const resp = await fetch(`${API_BASE_URL}/getSMTP`, { 
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
             const data = await resp.json();
             if (data && !data.error) setSmtp(data);
         } catch (err) {
@@ -108,7 +123,12 @@ const Account = () => {
 
     const fetchSubscription = async () => {
         try {
-            const resp = await fetch(`${API_BASE_URL}/getSubscription`, { credentials: 'include' });
+            const resp = await fetch(`${API_BASE_URL}/getSubscription`, { 
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
             const data = await resp.json();
             if (data && !data.error) setSubscription(data);
         } catch (err) {
@@ -122,7 +142,10 @@ const Account = () => {
         try {
             const resp = await fetch(`${API_BASE_URL}/updateProfile`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 credentials: 'include',
                 body: JSON.stringify(profile)
             });
@@ -151,7 +174,10 @@ const Account = () => {
         try {
             const resp = await fetch(`${API_BASE_URL}/changePassword`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 credentials: 'include',
                 body: JSON.stringify(passwordForm)
             });
@@ -175,7 +201,10 @@ const Account = () => {
         try {
             const resp = await fetch(`${API_BASE_URL}/updateSMTP`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 credentials: 'include',
                 body: JSON.stringify(smtp)
             });
@@ -197,7 +226,10 @@ const Account = () => {
         try {
             const resp = await fetch(`${API_BASE_URL}/testSMTP`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 credentials: 'include',
                 body: JSON.stringify(smtp)
             });
@@ -214,7 +246,10 @@ const Account = () => {
         try {
             await fetch(`${API_BASE_URL}/updatePreferences`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 credentials: 'include',
                 body: JSON.stringify(newPrefs)
             });
@@ -247,6 +282,9 @@ const Account = () => {
             const resp = await fetch(`${API_BASE_URL}/uploadAvatar`, {
                 method: 'POST',
                 credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: formData
             });
             const data = await resp.json();

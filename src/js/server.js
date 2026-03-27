@@ -20,6 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (Render/Vercel) for secure cookies
 const port = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -84,7 +85,16 @@ const loginLimiter = rateLimit({
 
 // JWT Verification Middleware
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.token;
+  // Check cookie first, fallback to Authorization header
+  let token = req.cookies.token;
+  
+  if (!token && req.headers.authorization) {
+    const authHeader = req.headers.authorization;
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+  }
+
   if (!token) return res.status(401).json({ status: 'error', message: 'Access denied' });
 
   try {
@@ -879,12 +889,14 @@ app.post('/api/register', async (req, res) => {
 
         const userId = result.insertId;
         const user = { userId, username, role: 'admin' };
-        const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
+        const expiry = process.env.JWT_EXPIRY || '24h';
+        const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: expiry });
 
         res.cookie('token', token, {
           httpOnly: true,
           secure: true,
           sameSite: 'none',
+          path: '/',
           maxAge: 24 * 60 * 60 * 1000
         });
 
@@ -895,7 +907,7 @@ app.post('/api/register', async (req, res) => {
         db.query('INSERT INTO subscriptions (owner_id, renewal_date) VALUES (?, DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY))', [userId]);
 
         logActivity(username, 'Registration', 'New user registered', { userId });
-        res.json({ status: 'success', user });
+        res.json({ status: 'success', user, token });
       });
     });
   } catch (error) {
@@ -907,18 +919,20 @@ app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
 
   const handleSuccessfulLogin = (user) => {
-    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRY });
+    const expiry = process.env.JWT_EXPIRY || '24h';
+    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: expiry });
     const cookieOptions = {
       httpOnly: true,
       secure: true, // Always secure for cross-site
       sameSite: 'none', // Required for cross-site (Vercel to Render)
+      path: '/',
       maxAge: 24 * 60 * 60 * 1000
     };
     
     res.cookie('token', token, cookieOptions);
     const logId = user.role === 'admin' ? user.userId : user.owner_id;
     logActivity(user.username, 'Login', 'User logged in', { req, userId: logId });
-    res.json({ status: 'success', user });
+    res.json({ status: 'success', user, token });
   };
 
   db.query('SELECT * FROM users WHERE username = ?', [username], async (err, results) => {
