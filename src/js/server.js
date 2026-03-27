@@ -1262,7 +1262,7 @@ app.post('/api/uploadAvatar', authenticateToken, avatarUpload.single('avatar'), 
 
 // Catch-all: serve React app for any non-API route
 if (distExists) {
-  app.get('(.*)', (req, res) => {
+  app.get('/{*path}', (req, res) => {
     // Only catch-all if it's not an API call
     if (!req.path.startsWith('/api')) {
       const indexPath = path.join(distPath, 'index.html');
