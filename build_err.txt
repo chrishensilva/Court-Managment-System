@@ -1,0 +1,21 @@
+[31m✗[39m Build failed in 3.20s
+[31merror during build:
+[31msrc/components/layout/Footer.jsx (3:24): "Twitter" is not exported by "node_modules/lucide-react/dist/esm/lucide-react.js", imported by "src/components/layout/Footer.jsx".[31m
+file: [36mD:/React/NewProj/Court/src/components/layout/Footer.jsx:3:24[31m
+[33m
+1: import React from 'react';
+2: import { Link } from 'react-router-dom';
+3: import { Scale, Github, Twitter, Linkedin } from 'lucide-react';
+                           ^
+4: import '../home/Home.css';
+[31m
+    at getRollupError (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at Module.error (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:16956:16)
+    at Module.traceVariable (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:17412:29)
+    at ModuleScope.findVariable (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:15076:39)
+    at ReturnValueScope.findVariable (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at FunctionBodyScope.findVariable (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:5649:38)
+    at Identifier.bind (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:5423:40)
+    at CallExpression.bind (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:2809:28)
+    at CallExpression.bind (file:///D:/React/NewProj/Court/node_modules/rollup/dist/es/shared/node-entry.js:12123:15)[39m

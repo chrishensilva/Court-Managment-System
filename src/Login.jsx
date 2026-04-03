@@ -30,7 +30,7 @@ function Login() {
       if (data.status === "success") {
         if (data.token) localStorage.setItem("token", data.token);
         setAuth(data.user);
-        navigate("/");
+        navigate("/app");
       } else {
         toast(data.message || "Incorrect username or password", "error");
       }

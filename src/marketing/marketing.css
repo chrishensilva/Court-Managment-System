@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+.marketing-app {
+  --color-primary: #0a0a0a;
+  --color-secondary: #171717;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-white: #ffffff;
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f4f4f5;
+  --color-gray-200: #e4e4e7;
+  --color-gray-300: #d4d4d8;
+  --color-gray-400: #a1a1aa;
+  --color-gray-500: #71717a;
+  --color-gray-800: #27272a;
+  --color-gray-900: #18181b;
+
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+
+  font-family: var(--font-body);
+  background-color: var(--color-gray-50);
+  color: var(--color-gray-900);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+.marketing-app * {
+  box-sizing: border-box;
+}
+
+.marketing-app h1, 
+.marketing-app h2, 
+.marketing-app h3, 
+.marketing-app h4, 
+.marketing-app h5, 
+.marketing-app h6 {
+  font-family: var(--font-heading);
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.marketing-app a {
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+}
+
+.marketing-app .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  border: 1px solid transparent;
+  letter-spacing: -0.01em;
+}
+
+.marketing-app .btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-white);
+  box-shadow: var(--shadow-sm);
+}
+
+.marketing-app .btn-primary:hover {
+  background-color: var(--color-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.marketing-app .btn-white {
+  background-color: var(--color-white);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+.marketing-app .btn-white:hover {
+  background-color: var(--color-gray-100);
+  transform: translateY(-1px);
+}
+
+.marketing-app .btn-secondary {
+  background-color: var(--color-white);
+  color: var(--color-primary);
+  border: 1px solid var(--color-gray-200);
+}
+
+.marketing-app .btn-secondary:hover {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-gray-300);
+  transform: translateY(-1px);
+}
+
+.marketing-app .btn-outline {
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-gray-200);
+}
+
+.marketing-app .btn-outline:hover {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-gray-300);
+  transform: translateY(-1px);
+}
+
+.marketing-app .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.marketing-app section {
+  padding: 5rem 0;
+}
+
+.marketing-app .section-title {
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.marketing-app .section-subtitle {
+  text-align: center;
+  font-size: 1.125rem;
+  color: var(--color-gray-800);
+  max-width: 700px;
+  margin: 0 auto 3rem;
+}
